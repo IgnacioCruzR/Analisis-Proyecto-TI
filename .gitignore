@@ -23,6 +23,7 @@ wheels/
 .installed.cfg
 *.egg
 
+.env
 .vscode/
 .idea/
 *.swp
