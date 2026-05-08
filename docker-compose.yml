@@ -12,6 +12,8 @@ services:
       - "postgres"
       - "-c"
       - "listen_addresses=*"
+      - "-c"
+      - "shared_preload_libraries=pgcrypto"
     ports:
       - "5434:5432"
     volumes:
