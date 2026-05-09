@@ -3,5 +3,5 @@ sqlalchemy
 psycopg[binary]
 python-dotenv==1.0.0
 alembic==1.12.1
-pydantic==2.5.0
+pydantic>=2.10.0,<3
 requests==2.31.0
