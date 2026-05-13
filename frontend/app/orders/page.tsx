@@ -23,6 +23,9 @@ import {
   Target,
   AlertCircle,
   Check,
+  BanknoteArrowUp,
+  BanknoteArrowDown,
+  BanknoteX
 } from "lucide-react";
 import {
   AreaChart,
@@ -56,10 +59,19 @@ const COLORS = [
   "var(--chart-5)",
 ];
 
-const channelsFormat = {
+const channelsFormat: Record<string, string> = {
   web: "Web",
   app: "Aplicación",
   call_center: "Call Center",
+};
+
+const statusFormat: Record<string, string> = {
+  delivered: "Pedido entregado",
+  paid: "Pedido pagado",
+  payment_failed: "Fallo en pago de pedido",
+  stock_unavailable: "Stock no disponible",
+  stock_reserved: "Stock reservado",
+  created: "Recien creado",
 };
 export default function OrdersPage() {
   const { data: kpis, isLoading: kpisLoading } = useOrdersKPIs();
@@ -92,7 +104,7 @@ export default function OrdersPage() {
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {kpisLoading ? (
-            Array.from({ length: 6 }).map((_, i) => <KPICardSkeleton key={i} />)
+            Array.from({ length: 10 }).map((_, i) => <KPICardSkeleton key={i} />)
           ) : (
             <>
               <KPICard
@@ -122,6 +134,7 @@ export default function OrdersPage() {
               <KPICard
                 title="Tiempo promedio desde creación hasta entrega."
                 value={kpis?.avg_processing_time_hours ?? 0}
+                format="hours"
                 icon={<Clock className="h-5 w-5" />}
               />
 
@@ -143,7 +156,7 @@ export default function OrdersPage() {
                 title="Tasa de pagos fallidos"
                 value={kpis?.payment_failure_rate ?? 0}
                 format="percentage"
-                icon={<AlertCircle className="h-5 w-5" />}
+                icon={<BanknoteX className="h-5 w-5" />}
               />
               <KPICard
                 title="Promedio de dinero generado por pedido."
@@ -156,7 +169,7 @@ export default function OrdersPage() {
                 title="Tasa de pagos exitosos"
                 value={kpis?.payment_success_rate ?? 0}
                 format="percentage"
-                icon={<Check className="h-5 w-5" />}
+                icon={<BanknoteArrowUp className="h-5 w-5" />}
               />
             </>
           )}
@@ -338,7 +351,10 @@ export default function OrdersPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={statuses?.statuses ?? []}
+                      data={(statuses?.statuses ?? []).map((status) => ({
+                        ...status,
+                        status: statusFormat[status.status] || status.status,
+                      }))}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -347,6 +363,7 @@ export default function OrdersPage() {
                       dataKey="count"
                       nameKey="status"
                     >
+                      
                       {statuses?.statuses?.map(
                         (entry: OrderStatus, index: number) => (
                           <Cell
