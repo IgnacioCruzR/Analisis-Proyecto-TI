@@ -29,7 +29,7 @@ export const ordersAPI = {
 
 // Subscriptions API
 export const subscriptionsAPI = {
-  getKPIs: () => fetchAPI('/kpis/subscriptions/summary', mockData.subscriptionKPIs),
+  getKPIs: (days: number = 30) => fetchAPI(`/kpis/subscriptions/summary?days=${days}`, mockData.subscriptionKPIs),
   getTimeline: (days: number = 30) => fetchAPI(`/kpis/subscriptions/timeline?days=${days}`, mockData.subscriptionTimeline),
   getRetentionRates: () => fetchAPI('/kpis/subscriptions/retention', mockData.retentionRates),
 }

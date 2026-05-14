@@ -48,10 +48,10 @@ export function KPICard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground min-h-10 h-20">
+            <p className="text-sm font-medium text-muted-foreground min-h-10 h-20 mb-3">
               {title}
             </p>
-            <p className="text-3xl font-bold tracking-tight text-foreground mt-2 w-fit">
+            <p className="text-3xl font-bold tracking-tight text-foreground  ">
               {formatValue(value)}
             </p>
           </div>

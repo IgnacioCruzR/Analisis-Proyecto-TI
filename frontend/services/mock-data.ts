@@ -20,6 +20,8 @@ import type {
   ServiceStatus,
   Activity,
   Alert,
+  RetentionRates,
+  SubscriptionTimelineResponse,
 } from '@/types/analytics'
 
 // Orders Mock Data
@@ -68,22 +70,23 @@ export const subscriptionKPIs: SubscriptionKPIs = {
   newSubscriptions: 342,
 }
 
-export const subscriptionTimeline: SubscriptionTimeline[] = Array.from({ length: 12 }, (_, i) => {
+export const subscriptionTimeline: SubscriptionTimelineResponse[] = Array.from({ length: 12 }, (_, i) => {
   const date = new Date()
   date.setMonth(date.getMonth() - (11 - i))
   return {
     date: date.toISOString().slice(0, 7),
     renewals: Math.floor(600 + Math.random() * 200),
     cancellations: Math.floor(50 + Math.random() * 50),
-    new: Math.floor(200 + Math.random() * 150),
+    new_subscriptions: Math.floor(200 + Math.random() * 150),
   }
 })
 
-export const retentionRates = {
-  month1: 85.2,
-  month3: 78.5,
-  month6: 72.3,
-  month12: 65.8,
+export const retentionRates: RetentionRates = {
+  retention_rates:{
+    ["90_days"]: 78.5,
+    ["30_days"]: 85.2,
+    annual: 65.4
+  }
 } 
 // Notifications Mock Data
 export const notificationKPIs: NotificationKPIs = {

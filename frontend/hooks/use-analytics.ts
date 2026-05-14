@@ -38,11 +38,11 @@ export function useOrderTimeline(days: number = 30) {
 }
 
 // Subscriptions hooks
-export function useSubscriptionKPIs() {
-  return useSWR('subscriptions-kpis', subscriptionsAPI.getKPIs, swrConfig)
+export function useSubscriptionKPIs(days: number = 1) {
+  return useSWR(`subscriptions-kpis-${days}`, () => subscriptionsAPI.getKPIs(days), swrConfig)
 }
 
-export function useSubscriptionTimeline(days: number = 30) {
+export function useSubscriptionTimeline(days: number = 1) {
   return useSWR(`subscriptions-timeline-${days}`, () => subscriptionsAPI.getTimeline(days), swrConfig)
 }
 

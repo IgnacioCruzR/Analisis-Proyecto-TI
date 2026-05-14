@@ -81,14 +81,27 @@ export interface SubscriptionKPIs {
 
 }
 
-export interface SubscriptionTimeline {
-  timeline: any
+export interface SubscriptionTimelinePoint {
   date: string
   renewals: number
   cancellations: number
-  new: number
+  new_subscriptions: number  // ← note: 'new_subscriptions' not 'new'
 }
 
+export interface SubscriptionTimelineResponse {
+  start_date: string
+  end_date: string
+  total_subscriptions: number
+  timeline: SubscriptionTimelinePoint[]
+}
+
+export interface RetentionRates {
+  retention_rates: {
+    annual: number
+    ["90_days"]: number
+    ["30_days"]: number
+  }
+}
 // Notifications
 export interface NotificationKPIs {
   totalSent: number

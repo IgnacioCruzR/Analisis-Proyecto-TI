@@ -9,7 +9,7 @@ import {
 import {
   useSubscriptionKPIs,
   useSubscriptionTimeline,
-  useSubscriptionRetentionRates
+  useSubscriptionRetentionRates,
 } from "@/hooks/use-analytics";
 import {
   RefreshCw,
@@ -24,6 +24,9 @@ import {
   UserMinus,
   BanknoteArrowUp,
   ClockCheck,
+  Calendar,
+  ChevronDown,
+  TrendingUpDown,
 } from "lucide-react";
 import {
   AreaChart,
@@ -38,14 +41,36 @@ import {
   ComposedChart,
   Line,
 } from "recharts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export default function SubscriptionsPage() {
-  const { data: kpis, isLoading: kpisLoading } = useSubscriptionKPIs();
+  const [selectedDays, setSelectedDays] = useState<AllowedDays>(1);
+  type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
+  const { data: kpis, isLoading: kpisLoading } = useSubscriptionKPIs(selectedDays);
   const { data: timeline, isLoading: timelineLoading } =
-    useSubscriptionTimeline();
+    useSubscriptionTimeline(selectedDays);
 
-  const {data: retentionRates, isLoading: retentionLoading} = useSubscriptionRetentionRates();
+  const { data: retentionRates, isLoading: retentionLoading } =
+    useSubscriptionRetentionRates();
+
+  const filterDaysLabel: Record<AllowedDays, string> = {
+    1: "Último día",
+    7: "Últimos 7 días",
+    30: "Últimos 30 días",
+    90: "Últimos 90 días",
+    180: "Últimos 180 días",
+    365: "Últimos 365 días",
+  };
   console.log("Subscription KPIs:", kpis);
   console.log("Subscription Timeline:", timeline);
   console.log("Retention Rates:", retentionRates);
@@ -54,9 +79,49 @@ export default function SubscriptionsPage() {
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Suscripciones y Contratos
-          </h1>
+          <div className="flex justify-between items-center mr-5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Suscripciones y Contratos
+            </h1>
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 bg-background border-border text-foreground hover:bg-muted"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>{filterDaysLabel[selectedDays]}</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => setSelectedDays(1)}>
+                    Último día
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDays(7)}>
+                    Últimos 7 días
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDays(30)}>
+                    Últimos 30 días
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDays(90)}>
+                    Últimos 90 días
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedDays(180)}>
+                    Últimos 180 días
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => setSelectedDays(365)}>
+                    Últimos 365 días
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Custom range</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>{" "}
+            </div>
+          </div>
           <p className="text-muted-foreground">
             Análisis del ciclo de vida de las suscripciones/contratos y de los
             ingresos{" "}
@@ -64,45 +129,35 @@ export default function SubscriptionsPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {kpisLoading ? (
             Array.from({ length: 6 }).map((_, i) => <KPICardSkeleton key={i} />)
           ) : (
             <>
               <KPICard
-                title="Suscripciones actualmente activas."
-                value={kpis?.stats?.active ?? 0}
-                icon={<Users className="h-5 w-5" />}
-              />
-              <KPICard
                 title="Porcentaje de suscripciones renovadas."
-                value={kpis?.renewal_rate ?? 0}
+                value={(kpis?.renewal_rate ?? 0) * 100}
                 format="percentage"
                 icon={<RefreshCw className="h-5 w-5" />}
               />
-
               <KPICard
-                title="Porcentaje de errores en renovaciones o cobros."
-                value={kpis?.error_rate ?? 0}
+                title={`Porcentaje de clientes perdidos en ${selectedDays==1 ? "el" : "los"} ${filterDaysLabel[selectedDays].toLowerCase()}.`}
+                value={kpis?.stats?.churn_rate ?? 0}
                 format="percentage"
-                icon={<BanknoteX className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Clientes que gestionaron contratos sin soporte."
-                value={kpis?.auto_service_rate ?? 0}
-                format="percentage"
-                icon={<BadgeQuestionMark className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Nuevas suscripciones creadas."
-                value={kpis?.stats?.new_subscriptions ?? 0}
-                icon={<UserRoundPlus className="h-5 w-5" />}
+                icon={<TrendingDown className="h-5 w-5" />}
               />
 
               <KPICard
-                title="Suscripciones canceladas."
-                value={kpis?.stats?.cancellations ?? 0}
-                icon={<UserMinus className="h-5 w-5" />}
+                title={`Crecimiento neto de suscripciones en ${selectedDays==1 ? "el" : "los"} ${filterDaysLabel[selectedDays].toLowerCase()}.`}
+                value={kpis?.stats?.net_growth ?? 0}
+                format="number"
+                icon={<TrendingUpDown className="h-5 w-5" />}
+              />
+
+              <KPICard
+                title={`Suscripciones activas creadas en ${selectedDays==1 ? "el" : "los"} ${filterDaysLabel[selectedDays].toLowerCase()}.`}
+                value={kpis?.stats?.active ?? 0}
+                icon={<Users className="h-5 w-5" />}
               />
 
               <KPICard
@@ -112,10 +167,27 @@ export default function SubscriptionsPage() {
               />
 
               <KPICard
-                title="Porcentaje de clientes perdidos."
-                value={kpis?.stats?.churn_rate ?? 0}
+                title="Porcentaje de errores en renovaciones o cobros."
+                value={(kpis?.error_rate ?? 0) * 100}
                 format="percentage"
-                icon={<TrendingDown className="h-5 w-5" />}
+                icon={<BanknoteX className="h-5 w-5" />}
+              />
+              <KPICard
+                title="Clientes que gestionaron contratos sin soporte."
+                value={(kpis?.auto_service_rate ?? 0) * 100}
+                format="percentage"
+                icon={<BadgeQuestionMark className="h-5 w-5" />}
+              />
+              <KPICard
+                title={`Nuevas suscripciones creadas en ${selectedDays==1 ? "el" : "los"} ${filterDaysLabel[selectedDays].toLowerCase()}.`}
+                value={kpis?.stats?.new_subscriptions ?? 0}
+                icon={<UserRoundPlus className="h-5 w-5" />}
+              />
+
+              <KPICard
+                title={`Suscripciones canceladas en ${selectedDays==1 ? "el" : "los"} ${filterDaysLabel[selectedDays].toLowerCase()}.`}
+                value={kpis?.stats?.cancellations ?? 0}
+                icon={<UserMinus className="h-5 w-5" />}
               />
 
               <KPICard
@@ -179,7 +251,7 @@ export default function SubscriptionsPage() {
         )}
 
         {/* Metrics Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
           {/* Retention Metrics */}
           <Card className="bg-card border-border">
             <CardHeader>
@@ -191,7 +263,10 @@ export default function SubscriptionsPage() {
               {retentionLoading ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-6 bg-muted rounded animate-pulse" />
+                    <div
+                      key={i}
+                      className="h-6 bg-muted rounded animate-pulse"
+                    />
                   ))}
                 </div>
               ) : (
@@ -201,7 +276,10 @@ export default function SubscriptionsPage() {
                       30 días de retención
                     </span>
                     <span className="text-lg font-semibold text-success">
-                      {retentionRates?.retention_rates?.["30_days"]?.toFixed(1) ?? 0}%
+                      {retentionRates?.retention_rates?.["30_days"]?.toFixed(
+                        1,
+                      ) ?? 0}
+                      %
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -209,7 +287,10 @@ export default function SubscriptionsPage() {
                       90 días de retención
                     </span>
                     <span className="text-lg font-semibold text-foreground">
-                      {retentionRates?.retention_rates?.["90_days"]?.toFixed(1) ?? 0}%
+                      {retentionRates?.retention_rates?.["90_days"]?.toFixed(
+                        1,
+                      ) ?? 0}
+                      %
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -217,7 +298,8 @@ export default function SubscriptionsPage() {
                       Año de retención
                     </span>
                     <span className="text-lg font-semibold text-foreground">
-                      {retentionRates?.retention_rates?.annual?.toFixed(1) ?? 0}%
+                      {retentionRates?.retention_rates?.annual?.toFixed(1) ?? 0}
+                      %
                     </span>
                   </div>
                 </>
@@ -265,7 +347,7 @@ export default function SubscriptionsPage() {
                       {plan.name}
                     </span>
                     <span className="text-sm text-muted-foreground">
-                      {plan.count.toLocaleString()} ({plan.percentage}%)
+                      {plan.count} ({plan.percentage}%)
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -282,82 +364,8 @@ export default function SubscriptionsPage() {
             </CardContent>
           </Card>
 
-          {/* Revenue Breakdown */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Revenue Breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">MRR</span>
-                <span className="text-lg font-semibold text-foreground">
-                  $423,600
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">ARR</span>
-                <span className="text-lg font-semibold text-foreground">
-                  $5,083,200
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">ARPU</span>
-                <span className="text-lg font-semibold text-foreground">
-                  $50.12
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Expansion MRR
-                </span>
-                <span className="text-lg font-semibold text-success">
-                  +$12,450
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+   
         </div>
-
-        {/* Churn Analysis */}
-        <ChartCard
-          title="Churn Analysis"
-          description="Reasons for subscription cancellation"
-        >
-          <div className="grid gap-4 md:grid-cols-5">
-            {[
-              { reason: "Price", percentage: 32, color: "var(--chart-5)" },
-              { reason: "Features", percentage: 24, color: "var(--chart-3)" },
-              {
-                reason: "Competition",
-                percentage: 18,
-                color: "var(--chart-2)",
-              },
-              { reason: "Support", percentage: 14, color: "var(--chart-4)" },
-              {
-                reason: "Other",
-                percentage: 12,
-                color: "var(--muted-foreground)",
-              },
-            ].map((item) => (
-              <div
-                key={item.reason}
-                className="text-center p-4 rounded-lg border border-border bg-muted/30"
-              >
-                <div
-                  className="text-3xl font-bold"
-                  style={{ color: item.color }}
-                >
-                  {item.percentage}%
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {item.reason}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
       </div>
     </DashboardLayout>
   );
