@@ -30,7 +30,7 @@ export function KPICard({
           maximumFractionDigits: val >= 1000000 ? 2 : 0,
         }).format(val)
       case 'percentage':
-        return `${val.toFixed(1)}%`
+        return `${val.toFixed(0)}%`
       case 'hours':
         return `${val.toFixed(2)} h`
       case 'months':
@@ -48,10 +48,10 @@ export function KPICard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-muted-foreground min-h-10">
+            <p className="text-sm font-medium text-muted-foreground min-h-10 h-20">
               {title}
             </p>
-            <p className="text-3xl font-bold tracking-tight text-foreground">
+            <p className="text-3xl font-bold tracking-tight text-foreground mt-2 w-fit">
               {formatValue(value)}
             </p>
           </div>
