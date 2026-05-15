@@ -33,6 +33,16 @@ from app.schemas.salud_kpi_schema import (
     SaludVisitTrendPoint,
     SaludTodayVisitRow,
 )
+from app.services.incidents_analytics_service import (
+    get_incidents_kpis,
+    get_incidents_list,
+    get_incidents_timeline,
+)
+from app.schemas.incidents_kpi_schema import (
+    IncidentKPIsResponse,
+    IncidentTimelinePoint,
+    IncidentRow,
+)
 
 
 router = APIRouter(
@@ -396,4 +406,82 @@ async def get_salud_today_schedule_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error agenda salud: {str(e)}",
+        )
+
+
+# ================================================================
+# INCIDENTS — KPIs desde fact_incidents
+# ================================================================
+
+
+@router.get(
+    "/incidents/kpis",
+    response_model=IncidentKPIsResponse,
+    summary="KPIs de gestión de incidentes",
+    description="Métricas agregadas desde fact_incidents",
+)
+async def get_incidents_kpis_endpoint(
+    db: Session = Depends(get_db),
+) -> IncidentKPIsResponse:
+    try:
+        data = get_incidents_kpis(db)
+        return IncidentKPIsResponse(**data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error KPIs incidentes: {str(e)}",
+        )
+
+
+@router.get(
+    "/incidents/timeline",
+    response_model=list[IncidentTimelinePoint],
+    summary="Línea de tiempo de incidentes",
+    description="Volumen diario: abiertos, resueltos y críticos (últimos N días)",
+)
+async def get_incidents_timeline_endpoint(
+    days: int = 14,
+    db: Session = Depends(get_db),
+) -> list[IncidentTimelinePoint]:
+    try:
+        if days < 1 or days > 90:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="days debe estar entre 1 y 90",
+            )
+        raw = get_incidents_timeline(db, days=days)
+        return [IncidentTimelinePoint(**p) for p in raw]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error timeline incidentes: {str(e)}",
+        )
+
+
+@router.get(
+    "/incidents/list",
+    response_model=list[IncidentRow],
+    summary="Lista de incidentes",
+    description="Incidentes recientes desde el warehouse, ordenados por última actualización",
+)
+async def get_incidents_list_endpoint(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+) -> list[IncidentRow]:
+    try:
+        if limit < 1 or limit > 200:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="limit debe estar entre 1 y 200",
+            )
+        raw = get_incidents_list(db, limit=limit)
+        return [IncidentRow(**row) for row in raw]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listado incidentes: {str(e)}",
         )

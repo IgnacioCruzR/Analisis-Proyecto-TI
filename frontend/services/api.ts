@@ -48,9 +48,9 @@ export const iotAPI = {
 
 // Incidents API
 export const incidentsAPI = {
-  getKPIs: () => fetchAPI('/analytics/incidents/kpis', mockData.incidentKPIs),
-  getTimeline: () => fetchAPI('/analytics/incidents/timeline', mockData.incidentTimeline),
-  getList: () => fetchAPI('/analytics/incidents/list', mockData.incidents),
+  getKPIs: () => fetchAPI('/kpis/incidents/kpis', mockData.incidentKPIs),
+  getTimeline: () => fetchAPI('/kpis/incidents/timeline?days=14', mockData.incidentTimeline),
+  getList: () => fetchAPI('/kpis/incidents/list', mockData.incidents),
 }
 
 // Payments API
