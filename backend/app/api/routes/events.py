@@ -1,17 +1,13 @@
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas import EventCreate, EventCreateResponse
-from app.services import create_event, is_transaction_token_unique
+from app.services import create_event
 from app.etl.processors.order_processor import process_order_event
 from app.etl.processors.subscription_processor import process_subscription_event
-from app.etl.processors.payment_processor import process_payment_event
+from app.etl.processors.salud_processor import process_salud_event
 
-
-PAYMENT_EVENT_TYPES = {"intento_pago", "pago_exitoso", "pago_rechazado"}
 
 router = APIRouter(
     prefix="/events",
@@ -23,56 +19,12 @@ router = APIRouter(
 )
 
 
-def _validate_payment_event(event: EventCreate, db: Session) -> None:
-    if event.event_type not in PAYMENT_EVENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Eventos de pagos válidos: intento_pago, pago_exitoso, pago_rechazado. "
-                f"event_type recibido: {event.event_type}"
-            )
-        )
-
-    transaction_token = event.payload.get("transaction_token")
-    if not transaction_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="transaction_token es obligatorio para eventos de pagos"
-        )
-
-    try:
-        uuid.UUID(str(transaction_token))
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="transaction_token debe ser un UUID válido"
-        )
-
-    if not is_transaction_token_unique(db, str(transaction_token)):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="transaction_token debe ser único y no puede haberse usado en otra transacción"
-        )
-
-    if event.event_type == "pago_rechazado":
-        error_code = event.payload.get("error_code")
-        if not error_code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="error_code es obligatorio para eventos pago_rechazado"
-            )
-
-
 @router.post(
     "",
     response_model=EventCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear un nuevo evento",
-    description=(
-        "Recibe un evento de cualquier dominio, lo almacena en raw_events y lo procesa "
-        "automáticamente si es orders, subscriptions o payments. Para pagos se valida "
-        "transaction_token único y error_code en pago_rechazado."
-    )
+    description="Recibe un evento (data lake: raw_events). Procesa automáticamente orders, subscriptions y salud hacia el warehouse cuando aplica."
 )
 async def create_event_endpoint(
     event: EventCreate,
@@ -80,9 +32,6 @@ async def create_event_endpoint(
 ) -> EventCreateResponse:
 
     try:
-        if event.source == "payments":
-            _validate_payment_event(event, db)
-
         # 1. Guardar evento en raw_events
         db_event = create_event(db=db, event=event)
         
@@ -103,14 +52,16 @@ async def create_event_endpoint(
             except Exception as etl_error:
                 print(f"⚠️  [AUTO-ETL-SUBSCRIPTIONS] Error: {str(etl_error)}")
 
-        elif db_event.source == "payments":
+        elif db_event.source == "salud":
             try:
-                process_payment_event(db, db_event)
+                process_salud_event(db, db_event)
+                db_event.processed = True
                 db.commit()
-                print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (payments) procesado automáticamente")
+                print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (salud) procesado automáticamente")
             except Exception as etl_error:
-                print(f"⚠️  [AUTO-ETL-PAYMENTS] Error: {str(etl_error)}")
-        
+                db.rollback()
+                print(f"⚠️  [AUTO-ETL-SALUD] Error: {str(etl_error)}")
+
         return EventCreateResponse(
             message="event stored",
             event_id=db_event.id,
@@ -118,8 +69,6 @@ async def create_event_endpoint(
             event_type=db_event.event_type
         )
     
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
