@@ -39,17 +39,21 @@ async def create_event_endpoint(
         if db_event.source == "orders":
             try:
                 process_order_event(db, db_event)
+                db_event.processed = True
                 db.commit()
                 print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (orders) procesado automáticamente")
             except Exception as etl_error:
+                db.rollback()
                 print(f"⚠️  [AUTO-ETL-ORDERS] Error: {str(etl_error)}")
         
         elif db_event.source == "subscriptions":
             try:
                 process_subscription_event(db, db_event)
+                db_event.processed = True
                 db.commit()
                 print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (subscriptions) procesado automáticamente")
             except Exception as etl_error:
+                db.rollback()
                 print(f"⚠️  [AUTO-ETL-SUBSCRIPTIONS] Error: {str(etl_error)}")
 
         elif db_event.source == "salud":
