@@ -15,6 +15,7 @@ from app.models.warehouse import (
     FactAlertas,
     FactFichasClinicas,
 )
+from app.models.warehouse.alerts import PriorityAlert
 from app.api import events_router, kpis_router
 _ = (
     RawEvent,
