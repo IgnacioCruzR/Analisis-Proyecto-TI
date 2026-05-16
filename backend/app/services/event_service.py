@@ -20,6 +20,16 @@ def create_event(db: Session, event: EventCreate) -> RawEvent:
     return db_event
 
 
+def get_event_by_token(db: Session, token: str) -> RawEvent | None:
+    return db.query(RawEvent).filter(
+        RawEvent.payload["transaction_token"].astext == token
+    ).first()
+
+
+def is_transaction_token_unique(db: Session, token: str) -> bool:
+    return get_event_by_token(db, token) is None
+
+
 def get_event_by_id(db: Session, event_id: int) -> RawEvent | None:
     return db.query(RawEvent).filter(RawEvent.id == event_id).first()
 

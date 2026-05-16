@@ -1,5 +1,7 @@
 from .fact_subscription import FactSubscription
 from .fact_orders import FactOrder
+from .pagos.fact_payments import FactPayment
+from .pagos.dim_status import DimStatus
 
 # Healthcare System DWH Models
 try:
@@ -31,6 +33,8 @@ except ImportError:
 __all__ = [
     "FactSubscription",
     "FactOrder",
+    "FactPayment",
+    "DimStatus",
     "DimUsuarios",
     "DimProfesionales",
     "DimZonas",
