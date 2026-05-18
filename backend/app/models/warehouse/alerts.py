@@ -13,7 +13,7 @@ class PriorityAlert(Base):
     alert_type = Column(String(100), nullable=False, index=True)
     severity = Column(String(50), nullable=False)
     message = Column(String(1000), nullable=False)
-    metadata = Column(JSON, nullable=True)
+    alert_metadata = Column("metadata", JSON, nullable=True)
     acknowledged = Column(Boolean, default=False, nullable=False, index=True)
 
     def __repr__(self) -> str:

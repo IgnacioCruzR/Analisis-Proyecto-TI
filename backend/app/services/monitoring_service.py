@@ -39,7 +39,7 @@ def check_payments_uptime(db: Session, window_minutes: int = 15) -> Dict[str, An
     alert = None
     if failure_rate > SLA_THRESHOLD:
         message = f"High failure rate in last {window_minutes}m: {failure_rate:.3f}% (threshold {SLA_THRESHOLD}%)"
-        alert = PriorityAlert(alert_type="payments.failure_rate", severity="high", message=message, metadata={"failure_rate": failure_rate, "window_minutes": window_minutes})
+        alert = PriorityAlert(alert_type="payments.failure_rate", severity="high", message=message, alert_metadata={"failure_rate": failure_rate, "window_minutes": window_minutes})
         db.add(alert)
         db.flush()
 
@@ -52,7 +52,7 @@ def check_payments_uptime(db: Session, window_minutes: int = 15) -> Dict[str, An
 
     if recent_confirmed == 0:
         message = f"No confirmations in the last {int(CRITICAL_NO_CONF_INTERVAL.total_seconds()/60)} minutes"
-        alert2 = PriorityAlert(alert_type="payments.no_confirmations", severity="critical", message=message, metadata={"since": (now - CRITICAL_NO_CONF_INTERVAL).isoformat()})
+        alert2 = PriorityAlert(alert_type="payments.no_confirmations", severity="critical", message=message, alert_metadata={"since": (now - CRITICAL_NO_CONF_INTERVAL).isoformat()})
         db.add(alert2)
         db.flush()
         alert = alert2 if alert is None else alert
