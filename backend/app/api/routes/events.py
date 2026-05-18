@@ -10,6 +10,8 @@ from app.etl.processors.salud_processor import process_salud_event
 from pydantic import ValidationError
 
 from app.services.payment_service import register_payment_attempt, confirm_payment
+from app.models.warehouse.pagos.fact_payments_events import FactPaymentsEvent
+from decimal import Decimal
 
 
 router = APIRouter(
@@ -83,6 +85,19 @@ async def create_event_endpoint(
 
                 try:
                     fact = register_payment_attempt(db, attempt.dict())
+                    # insert immutable audit event
+                    audit = FactPaymentsEvent(
+                        transaction_id=fact.transaction_id,
+                        order_id=fact.order_id,
+                        subscription_id=fact.subscription_id,
+                        amount=fact.monto,
+                        token_transaccion=fact.token_transaccion,
+                        codigo_error=fact.codigo_error,
+                        status="esperando_revisión",
+                        timestamp_evento=fact.timestamp_evento,
+                    )
+                    db.add(audit)
+                    db.flush()
                     db_event.processed = True
                     db.commit()
                     print(f"✅ [AUTO-ETL] Evento intento_pago procesado: {fact.transaction_id}")
@@ -100,6 +115,28 @@ async def create_event_endpoint(
 
                 try:
                     fact = confirm_payment(db, confirm.token_transaccion, confirm.dict())
+                    # append immutable audit event for confirmation
+                    status_val = "Aprobado" if fact.estado_conciliacion_id and True else ""
+                    # derive status name from estado table if available
+                    try:
+                        from app.models.warehouse.pagos.dim_estados_conciliacion import DimEstadosConciliacion
+                        estado = db.query(DimEstadosConciliacion).get(fact.estado_conciliacion_id)
+                        status_val = estado.nombre if estado else status_val
+                    except Exception:
+                        status_val = status_val or ("Aprobado" if confirm.approved else "rejected")
+
+                    audit = FactPaymentsEvent(
+                        transaction_id=fact.transaction_id,
+                        order_id=fact.order_id,
+                        subscription_id=fact.subscription_id,
+                        amount=fact.monto,
+                        token_transaccion=fact.token_transaccion,
+                        codigo_error=fact.codigo_error,
+                        status=status_val,
+                        timestamp_evento=fact.timestamp_evento,
+                    )
+                    db.add(audit)
+                    db.flush()
                     db_event.processed = True
                     db.commit()
                     print(f"✅ [AUTO-ETL] Evento confirmar_pago procesado: {fact.transaction_id}")
