@@ -76,15 +76,14 @@ async def create_event_endpoint(
             # Distinguish event types for payments flow
             if db_event.event_type == "intento_pago":
                 try:
-                    attempt = PaymentPayload = None
                     from app.schemas.payment_schema import AttemptPaymentPayload
-                    attempt = AttemptPaymentPayload.parse_obj(db_event.payload)
+                    attempt = AttemptPaymentPayload.model_validate(db_event.payload)
                 except ValidationError as ve:
                     db.rollback()
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid payment attempt payload: {ve}")
 
                 try:
-                    fact = register_payment_attempt(db, attempt.dict())
+                    fact = register_payment_attempt(db, attempt.model_dump())
                     # insert immutable audit event
                     audit = FactPaymentsEvent(
                         transaction_id=fact.transaction_id,
@@ -108,22 +107,17 @@ async def create_event_endpoint(
             elif db_event.event_type == "confirmar_pago":
                 try:
                     from app.schemas.payment_schema import ConfirmPaymentPayload
-                    confirm = ConfirmPaymentPayload.parse_obj(db_event.payload)
+                    confirm = ConfirmPaymentPayload.model_validate(db_event.payload)
                 except ValidationError as ve:
                     db.rollback()
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid payment confirm payload: {ve}")
 
                 try:
-                    fact = confirm_payment(db, confirm.token_transaccion, confirm.dict())
-                    # append immutable audit event for confirmation
-                    status_val = "Aprobado" if fact.estado_conciliacion_id and True else ""
-                    # derive status name from estado table if available
-                    try:
-                        from app.models.warehouse.pagos.dim_estados_conciliacion import DimEstadosConciliacion
-                        estado = db.query(DimEstadosConciliacion).get(fact.estado_conciliacion_id)
-                        status_val = estado.nombre if estado else status_val
-                    except Exception:
-                        status_val = status_val or ("Aprobado" if confirm.approved else "rejected")
+                    fact = confirm_payment(db, confirm.token_transaccion, confirm.model_dump())
+                    # resolve status name from dim table (already set by confirm_payment)
+                    from app.models.warehouse.pagos.dim_estados_conciliacion import DimEstadosConciliacion
+                    estado = db.get(DimEstadosConciliacion, fact.estado_conciliacion_id)
+                    status_val = estado.nombre if estado else ("Aprobado" if confirm.approved else "discrepancia_de_monto")
 
                     audit = FactPaymentsEvent(
                         transaction_id=fact.transaction_id,
@@ -149,13 +143,13 @@ async def create_event_endpoint(
                     from app.schemas.closure_schema import CierreDiarioPayload
                     from app.services.closure_service import process_cierre_diario
                     from app.services.monitoring_service import check_payments_uptime
-                    cierre = CierreDiarioPayload.parse_obj(db_event.payload)
+                    cierre = CierreDiarioPayload.model_validate(db_event.payload)
                 except ValidationError as ve:
                     db.rollback()
                     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid cierre payload: {ve}")
 
                 try:
-                    cierre_record = process_cierre_diario(db, cierre.dict())
+                    cierre_record = process_cierre_diario(db, cierre.model_dump())
                     db_event.processed = True
                     db.commit()
                     print(f"✅ [AUTO-ETL] Cierre diario procesado: {cierre_record.id} estado_id={cierre_record.estado_id}")

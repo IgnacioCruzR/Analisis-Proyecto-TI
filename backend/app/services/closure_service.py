@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict
 
@@ -25,27 +25,39 @@ def process_cierre_diario(db: Session, payload: Dict) -> CierreDiario:
     Uses SELECT ... FOR UPDATE when updating transaction rows to avoid race conditions.
     """
     fecha = payload["fecha"]
-    reported_total = Decimal(payload["reported_total"])
+    reported_total = Decimal(str(payload["reported_total"]))
     reported_count = int(payload["reported_count"])
 
-    # compute date range (UTC day)
-    start = datetime.combine(fecha, datetime.min.time())
-    end = datetime.combine(fecha, datetime.max.time())
+    # Build UTC-aware date range so comparisons against DateTime(timezone=True) are correct
+    start = datetime.combine(fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end = datetime.combine(fecha, datetime.max.time()).replace(tzinfo=timezone.utc)
 
-    # compute internal approved totals
-    approved_estado = db.query(DimEstadosConciliacion).filter(DimEstadosConciliacion.nombre == "Aprobado").one_or_none()
-    approved_id = approved_estado.id if approved_estado else None
-
-    internal_q = (
-        db.query(func.coalesce(func.count(FactPagos.transaction_id), 0).label("cnt"), func.coalesce(func.sum(FactPagos.monto), 0).label("sum"))
-        .filter(FactPagos.timestamp_evento >= start, FactPagos.timestamp_evento <= end)
+    # Resolve the 'Aprobado' dimension id
+    approved_estado = (
+        db.query(DimEstadosConciliacion)
+        .filter(DimEstadosConciliacion.nombre == "Aprobado")
+        .one_or_none()
     )
-    if approved_id:
-        internal_q = internal_q.filter(FactPagos.estado_conciliacion_id == approved_id)
 
-    row = internal_q.one()
-    internal_count = int(row.cnt or 0)
-    internal_total = Decimal(row.sum or 0)
+    # If no approved state exists yet, internal totals are 0 — nothing to compare
+    if approved_estado is None:
+        internal_count = 0
+        internal_total = Decimal("0")
+    else:
+        row = (
+            db.query(
+                func.coalesce(func.count(FactPagos.transaction_id), 0).label("cnt"),
+                func.coalesce(func.sum(FactPagos.monto), 0).label("sum"),
+            )
+            .filter(
+                FactPagos.timestamp_evento >= start,
+                FactPagos.timestamp_evento <= end,
+                FactPagos.estado_conciliacion_id == approved_estado.id,
+            )
+            .one()
+        )
+        internal_count = int(row.cnt or 0)
+        internal_total = Decimal(str(row.sum or 0))
 
     # Determine status
     status_name = "Aprobado"

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, Index
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, Index, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.base import Base
@@ -22,6 +22,10 @@ class FactPaymentsEvent(Base):
 
     __table_args__ = (
         Index("idx_fact_payments_events_tx_token_ts", "transaction_id", "token_transaccion", "timestamp_evento"),
+        CheckConstraint(
+            "status IN ('esperando_revisión', 'Aprobado', 'discrepancia_de_monto', 'discrepancia_de_transacciones')",
+            name="ck_fact_payments_events_status",
+        ),
     )
 
     def __repr__(self) -> str:  # pragma: no cover - trivial

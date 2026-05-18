@@ -56,7 +56,7 @@ export const incidentsAPI = {
 // Payments API
 export const paymentsAPI = {
   getKPIs: () => fetchAPI('/analytics/payments/kpis', mockData.paymentKPIs),
-  getTimeline: () => fetchAPI('/analytics/payments/timeline', mockData.paymentTimeline),
+  getTimeline: (hours: number = 24) => fetchAPI(`/analytics/payments/timeline?hours=${hours}`, mockData.paymentTimeline),
 }
 
 // Logistics API

@@ -17,7 +17,7 @@ from app.models.warehouse import (
     FactPaymentsEvent,
 )
 from app.models.warehouse.alerts import PriorityAlert
-from app.api import events_router, kpis_router
+from app.api import events_router, kpis_router, analytics_router
 _ = (
     RawEvent,
     FactSubscription,
@@ -51,6 +51,7 @@ app.add_middleware(
 
 app.include_router(events_router)
 app.include_router(kpis_router)
+app.include_router(analytics_router)
 
 
 @app.get("/", tags=["health"])
