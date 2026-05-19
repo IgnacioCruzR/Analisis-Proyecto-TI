@@ -85,7 +85,7 @@ export interface SubscriptionTimelinePoint {
   date: string
   renewals: number
   cancellations: number
-  new_subscriptions: number  // ← note: 'new_subscriptions' not 'new'
+  new_subscriptions: number 
 }
 
 export interface SubscriptionTimelineResponse {
