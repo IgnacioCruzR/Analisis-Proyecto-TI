@@ -50,7 +50,6 @@ from app.schemas.incidents_kpi_schema import (
 )
 from app.services.overview_analytics_service import (
     get_critical_alerts,
-    get_global_kpis,
     get_recent_activities,
     get_service_statuses,
 )

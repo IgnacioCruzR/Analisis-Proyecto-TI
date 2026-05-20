@@ -15,13 +15,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import FactIncident, FactOrder, FactSubscription, RawEvent
-from app.services.orders_analytics_service import (
-    get_delivery_rate,
-    get_payment_failure_rate,
-    get_revenue_total,
-    get_total_orders,
-)
-
 
 def _format_relative_time(dt: datetime) -> str:
     delta = datetime.utcnow() - dt
@@ -39,37 +32,6 @@ def _format_relative_time(dt: datetime) -> str:
 # Global KPIs (agregados desde warehouses existentes)
 # ================================================================
 
-
-def get_global_kpis(db: Session) -> Dict[str, Any]:
-    total_orders = get_total_orders(db)
-    delivery_rate_ratio = get_delivery_rate(db)
-    payment_failure_ratio = get_payment_failure_rate(db)
-    revenue = get_revenue_total(db)
-
-    active_subscriptions = (
-        db.query(func.count(FactSubscription.id))
-        .filter(FactSubscription.status == "active")
-        .scalar()
-        or 0
-    )
-
-    active_incidents = (
-        db.query(func.count(FactIncident.id))
-        .filter(FactIncident.status != "resolved")
-        .scalar()
-        or 0
-    )
-
-    return {
-        "totalOrders": int(total_orders),
-        "deliveryRate": round(delivery_rate_ratio * 100, 2),
-        "revenue": revenue,
-        "notificationSuccessRate": 0.0,
-        "activeSubscriptions": int(active_subscriptions),
-        "iotAlerts": 0,
-        "incidentCount": int(active_incidents),
-        "paymentFailureRate": round(payment_failure_ratio * 100, 2),
-    }
 
 
 # ================================================================
