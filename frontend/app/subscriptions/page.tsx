@@ -307,62 +307,7 @@ export default function SubscriptionsPage() {
             </CardContent>
           </Card>
 
-          {/* Plan Distribution */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Plan Distribution
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                {
-                  name: "Enterprise",
-                  count: 342,
-                  percentage: 4.0,
-                  color: "var(--chart-1)",
-                },
-                {
-                  name: "Professional",
-                  count: 2180,
-                  percentage: 25.8,
-                  color: "var(--chart-2)",
-                },
-                {
-                  name: "Business",
-                  count: 3456,
-                  percentage: 40.9,
-                  color: "var(--chart-3)",
-                },
-                {
-                  name: "Starter",
-                  count: 2474,
-                  percentage: 29.3,
-                  color: "var(--chart-4)",
-                },
-              ].map((plan) => (
-                <div key={plan.name} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      {plan.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {plan.count} ({plan.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${plan.percentage}%`,
-                        backgroundColor: plan.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+
 
    
         </div>

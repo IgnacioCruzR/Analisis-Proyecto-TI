@@ -152,16 +152,11 @@ async def get_subscriptions_timeline(days: int = 30, db: Session = Depends(get_d
         
         timeline_data = get_subscriptions_by_date(db, days)
         
-        if not timeline_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No subscription activity found in the last {days} days"
-            )
-        
+        # Devuelve respuesta válida incluso si no hay datos
         total_subscriptions = sum(
             point["new_subscriptions"] + point["renewals"] + point["cancellations"]
             for point in timeline_data
-        )
+        ) if timeline_data else 0
         
         start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
         end_date = datetime.utcnow().date().isoformat()
@@ -174,7 +169,7 @@ async def get_subscriptions_timeline(days: int = 30, db: Session = Depends(get_d
                 cancellations=point["cancellations"]
             )
             for point in timeline_data
-        ]
+        ] if timeline_data else []
         
         return SubscriptionTimelineResponse(
             start_date=start_date,
