@@ -241,7 +241,7 @@ def _saved(mock_db: MagicMock) -> RawEvent:
 
 class TestTicketCreado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_CREADO).status_code == 201
+        assert client.post("/events", json=TICKET_CREADO).status_code == 202
 
     def test_estado_inicial_es_abierto(self, client: TestClient, mock_db: MagicMock):
         """El MER define estado inicial = Abierto al crear el ticket."""
@@ -302,7 +302,7 @@ class TestTicketCreado:
 
 class TestTicketAsignado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_ASIGNADO).status_code == 201
+        assert client.post("/events", json=TICKET_ASIGNADO).status_code == 202
 
     def test_estado_cambia_a_progreso(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=TICKET_ASIGNADO)
@@ -328,7 +328,7 @@ class TestTicketAsignado:
 
 class TestTicketEscalado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_ESCALADO).status_code == 201
+        assert client.post("/events", json=TICKET_ESCALADO).status_code == 202
 
     def test_estado_progreso_durante_escalamiento(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=TICKET_ESCALADO)
@@ -351,7 +351,7 @@ class TestTicketEscalado:
 
 class TestTicketResuelto:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_RESUELTO).status_code == 201
+        assert client.post("/events", json=TICKET_RESUELTO).status_code == 202
 
     def test_estado_resuelto(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=TICKET_RESUELTO)
@@ -389,7 +389,7 @@ class TestTicketResuelto:
 
 class TestTicketCerrado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_CERRADO).status_code == 201
+        assert client.post("/events", json=TICKET_CERRADO).status_code == 202
 
     def test_estado_cerrado(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=TICKET_CERRADO)
@@ -410,10 +410,10 @@ class TestTicketCerrado:
 
 class TestInteraccionCreada:
     def test_201_mensaje_cliente_visible(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=INTERACCION_CREADA).status_code == 201
+        assert client.post("/events", json=INTERACCION_CREADA).status_code == 202
 
     def test_201_nota_interna(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=NOTA_INTERNA_CREADA).status_code == 201
+        assert client.post("/events", json=NOTA_INTERNA_CREADA).status_code == 202
 
     def test_event_type_correcto(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=INTERACCION_CREADA)
@@ -445,7 +445,7 @@ class TestInteraccionCreada:
 
 class TestKbArticuloUsado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=KB_ARTICULO_USADO).status_code == 201
+        assert client.post("/events", json=KB_ARTICULO_USADO).status_code == 202
 
     def test_es_evento_independiente(self, client: TestClient, mock_db: MagicMock):
         """Ticket_articulo es una entidad separada → evento propio, no embedded."""
@@ -487,8 +487,8 @@ class TestKbArticuloUsado:
         }
         r1 = client.post("/events", json=KB_ARTICULO_USADO)
         r2 = client.post("/events", json=segundo)
-        assert r1.status_code == 201
-        assert r2.status_code == 201
+        assert r1.status_code == 202
+        assert r2.status_code == 202
         assert mock_db.add.call_count == 2
 
 
@@ -498,7 +498,7 @@ class TestKbArticuloUsado:
 
 class TestTicketSlaViolado:
     def test_201(self, client: TestClient, mock_db: MagicMock):
-        assert client.post("/events", json=TICKET_SLA_VIOLADO).status_code == 201
+        assert client.post("/events", json=TICKET_SLA_VIOLADO).status_code == 202
 
     def test_threshold_crossed_75_100_o_150(self, client: TestClient, mock_db: MagicMock):
         client.post("/events", json=TICKET_SLA_VIOLADO)

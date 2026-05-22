@@ -26,6 +26,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 
+@pytest.fixture(autouse=True)
+def suppress_background_etl(monkeypatch):
+    """Evita que _run_etl intente abrir una SessionLocal real después del 202."""
+    monkeypatch.setattr("app.api.routes.events._run_etl", lambda *a, **kw: None)
+
+
 @pytest.fixture
 def mock_db() -> MagicMock:
     session = MagicMock(spec=Session)
