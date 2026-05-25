@@ -21,16 +21,16 @@ const swrConfig = {
 }
 
 // Orders hooks
-export function useOrdersKPIs() {
-  return useSWR('orders-kpis', ordersAPI.getKPIs, swrConfig)
+export function useOrdersKPIs(days: number = 30) {
+  return useSWR(`orders-kpis-${days}`, () => ordersAPI.getKPIs(days), swrConfig)
 }
 
-export function useOrderChannels() {
-  return useSWR('orders-channels', ordersAPI.getChannels, swrConfig)
+export function useOrderChannels(days: number = 30) {
+  return useSWR(`orders-channels-${days}`, () => ordersAPI.getChannels(days), swrConfig)
 }
 
-export function useOrderStatuses() {
-  return useSWR('orders-statuses', ordersAPI.getStatuses, swrConfig)
+export function useOrderStatuses(days: number = 30) {
+  return useSWR(`orders-statuses-${days}`, () => ordersAPI.getStatuses(days), swrConfig)
 }
 
 export function useOrderTimeline(days: number = 30) {

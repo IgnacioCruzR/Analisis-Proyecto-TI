@@ -31,24 +31,7 @@ export function Topbar({ className }: TopbarProps) {
       {/* Right Section */}
       <div className="flex items-center gap-2">
         {/* Time Range Selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 bg-background border-border text-foreground hover:bg-muted">
-              <Calendar className="h-4 w-4" />
-              <span>Últimas 24 hours</span>
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem>Última hora</DropdownMenuItem>
-            <DropdownMenuItem>Últimas 6 horas</DropdownMenuItem>
-            <DropdownMenuItem>Últimas 24 hours</DropdownMenuItem>
-            <DropdownMenuItem>Últimos 7 days</DropdownMenuItem>
-            <DropdownMenuItem>Últimos 30 days</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Custom range</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
 
 
         {/* Profile */}

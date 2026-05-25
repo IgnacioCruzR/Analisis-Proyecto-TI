@@ -8,6 +8,7 @@ from app.etl.processors.order_processor import process_order_event
 from app.etl.processors.subscription_processor import process_subscription_event
 from app.etl.processors.salud_processor import process_salud_event
 from app.etl.processors.incident_processor import process_incident_event
+from app.etl.processors.iot_processor import process_iot_event
 
 
 router = APIRouter(
@@ -68,10 +69,20 @@ async def create_event_endpoint(
                 process_incident_event(db, db_event)
                 db_event.processed = True
                 db.commit()
-                print(f" [AUTO-ETL] Evento {db_event.event_type} (incidents) procesado automáticamente")
+                print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (incidents) procesado automáticamente")
             except Exception as etl_error:
                 db.rollback()
-                print(f"  [AUTO-ETL-INCIDENTS] Error: {str(etl_error)}")
+                print(f"⚠️  [AUTO-ETL-INCIDENTS] Error: {str(etl_error)}")
+
+        elif db_event.source == "iot_devices":
+            try:
+                process_iot_event(db, db_event)
+                db_event.processed = True
+                db.commit()
+                print(f"✅ [AUTO-ETL] Evento {db_event.event_type} (iot_devices) procesado automáticamente")
+            except Exception as etl_error:
+                db.rollback()
+                print(f"⚠️  [AUTO-ETL-IoT] Error: {str(etl_error)}")
 
         return EventCreateResponse(
             message="event stored",

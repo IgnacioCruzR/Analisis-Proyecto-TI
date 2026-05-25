@@ -5,6 +5,7 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '')
 
 // Helper function for API calls (ready for real endpoints)
 async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
+  console.log(`Fetching data from API: ${endpoint}`)
   if (!API_BASE_URL) {
     return fallback
   }
@@ -23,9 +24,9 @@ async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
 
 // Orders API
 export const ordersAPI = {
-  getKPIs: () => fetchAPI('/kpis/orders/kpis', mockData.ordersKPIs),
-  getChannels: () => fetchAPI('/kpis/orders/channels', mockData.orderChannels),
-  getStatuses: () => fetchAPI('/kpis/orders/status', mockData.orderStatuses),
+  getKPIs: (days: number = 30) => fetchAPI(`/kpis/orders/kpis?days=${days}`, mockData.ordersKPIs),
+  getChannels: (days: number = 30) => fetchAPI(`/kpis/orders/channels?days=${days}`, mockData.orderChannels),
+  getStatuses: (days: number = 30) => fetchAPI(`/kpis/orders/status?days=${days}`, mockData.orderStatuses),
   getTimeline: (days: number = 30) => fetchAPI(`/kpis/orders/timeline?days=${days}`, mockData.orderTimeline),
 }
 

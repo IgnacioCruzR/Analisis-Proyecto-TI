@@ -48,6 +48,24 @@ from app.schemas.incidents_kpi_schema import (
     IncidentTimelinePoint,
     IncidentRow,
 )
+from app.services.iot_analytics_service import (
+    get_all_iot_kpis,
+    get_sensors_status,
+    get_sensors_by_type,
+    get_iot_events,
+    get_iot_timeline,
+)
+from app.schemas.iot_kpi_schema import (
+    SensorKPIs,
+    SensorsStatusResponse,
+    SensorStatus,
+    SensorsByTypeResponse,
+    SensorTypeMetric,
+    EventsResponse,
+    SensorEvent,
+    IoTTimelineResponse,
+    TimelinePoint,
+)
 from app.services.overview_analytics_service import (
     get_critical_alerts,
     get_recent_activities,
@@ -256,11 +274,17 @@ async def get_subscriptions_retention(db: Session = Depends(get_db)):
     "/orders/kpis",
     response_model=KPISResponse,
     summary="KPIs consolidados de órdenes",
-    description="Retorna todos los KPIs principales del dominio Orders"
+    description="Retorna todos los KPIs principales del dominio Orders. Puede filtrar por período de días"
 )
-async def get_orders_kpis(db: Session = Depends(get_db)) -> KPISResponse:
+async def get_orders_kpis(days: int = 30, db: Session = Depends(get_db)) -> KPISResponse:
     try:
-        kpis = get_all_kpis(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        kpis = get_all_kpis(db, days)
         
         return KPISResponse(
             total_orders=kpis["total_orders"],
@@ -286,11 +310,17 @@ async def get_orders_kpis(db: Session = Depends(get_db)) -> KPISResponse:
     "/orders/channels",
     response_model=ChannelsResponse,
     summary="Distribución de órdenes por canal",
-    description="Obtiene distribución de órdenes por canal de venta (web, app, call_center, store)"
+    description="Obtiene distribución de órdenes por canal de venta (web, app, call_center, store). Puede filtrar por período de días"
 )
-async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsResponse:
+async def get_orders_by_channels(days: int = 30, db: Session = Depends(get_db)) -> ChannelsResponse:
     try:
-        total = get_total_orders(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        total = get_total_orders(db, days)
         
         if total == 0:
             raise HTTPException(
@@ -298,7 +328,7 @@ async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsRespo
                 detail="No orders found in database"
             )
         
-        channels_data = get_orders_by_channel(db)
+        channels_data = get_orders_by_channel(db, days)
         
         channels_list = []
         for channel, count, revenue in channels_data:
@@ -332,11 +362,17 @@ async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsRespo
     "/orders/status",
     response_model=StatusResponse,
     summary="Distribución de órdenes por estado",
-    description="Obtiene distribución de órdenes por estado del ciclo de vida"
+    description="Obtiene distribución de órdenes por estado del ciclo de vida. Puede filtrar por período de días"
 )
-async def get_orders_by_statuses(db: Session = Depends(get_db)) -> StatusResponse:
+async def get_orders_by_statuses(days: int = 30, db: Session = Depends(get_db)) -> StatusResponse:
     try:
-        total = get_total_orders(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        total = get_total_orders(db, days)
         
         if total == 0:
             raise HTTPException(
@@ -344,7 +380,7 @@ async def get_orders_by_statuses(db: Session = Depends(get_db)) -> StatusRespons
                 detail="No orders found in database"
             )
         
-        status_data = get_orders_by_status(db)
+        status_data = get_orders_by_status(db, days)
         
         statuses_list = []
         for status_name, count in status_data:
@@ -686,4 +722,292 @@ async def get_overview_alerts_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error alertas overview: {str(e)}",
+        )
+
+
+# ================================================================
+# IoT — KPIs desde fact_iot y raw_events
+# ================================================================
+
+@router.get(
+    "/iot/kpis",
+    response_model=SensorKPIs,
+    summary="KPIs consolidados de sensores IoT",
+    description="Retorna todos los KPIs principales del dominio IoT. Puede filtrar por período de días"
+)
+async def get_iot_kpis_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> SensorKPIs:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        kpis = get_all_iot_kpis(db, days)
+        
+        return SensorKPIs(
+            total_sensors=kpis["total_sensors"],
+            online_sensors=kpis["online_sensors"],
+            offline_sensors=kpis["offline_sensors"],
+            availability_rate=kpis["availability_rate"],
+            avg_battery_level=kpis["avg_battery_level"],
+            low_battery_count=kpis["low_battery_count"],
+            data_validity_rate=kpis["data_validity_rate"],
+            anomalies_detected=kpis["anomalies_detected"],
+            avg_processing_latency_ms=kpis["avg_processing_latency_ms"],
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating IoT KPIs: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/status",
+    response_model=SensorsStatusResponse,
+    summary="Estado actual de sensores",
+    description="Obtiene estado de todos los sensores IoT (online, battery, última lectura, etc)"
+)
+async def get_iot_sensors_status(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> SensorsStatusResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        status_data = get_sensors_status(db, days)
+        
+        sensors_list = [
+            SensorStatus(
+                sensor_id=sensor["sensor_id"],
+                asset_id=sensor["asset_id"],
+                sensor_type=sensor["sensor_type"],
+                is_online=sensor["is_online"],
+                battery_level=sensor["battery_level"],
+                last_reading_at=sensor["last_reading_at"],
+                location=sensor["location"],
+                has_anomaly=sensor["has_anomaly"],
+                low_battery_alert=sensor["low_battery_alert"],
+            )
+            for sensor in status_data
+        ]
+        
+        online_count = sum(1 for s in sensors_list if s.is_online)
+        offline_count = sum(1 for s in sensors_list if not s.is_online)
+        
+        return SensorsStatusResponse(
+            total_sensors=len(sensors_list),
+            online_count=online_count,
+            offline_count=offline_count,
+            sensors=sensors_list
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting sensors status: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/by-type",
+    response_model=SensorsByTypeResponse,
+    summary="Distribución de sensores por tipo",
+    description="Obtiene distribución y estado de sensores agrupados por tipo"
+)
+async def get_iot_sensors_by_type(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> SensorsByTypeResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        types_data = get_sensors_by_type(db, days)
+        
+        types_list = [
+            SensorTypeMetric(
+                sensor_type=sensor_type["sensor_type"],
+                count=sensor_type["count"],
+                online_count=sensor_type["online_count"],
+                offline_count=sensor_type["offline_count"],
+                avg_battery=sensor_type["avg_battery"],
+                anomaly_count=sensor_type["anomaly_count"],
+            )
+            for sensor_type in types_data
+        ]
+        
+        total_sensors = sum(t.count for t in types_list)
+        
+        return SensorsByTypeResponse(
+            total_sensors=total_sensors,
+            sensor_types=types_list
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting sensors by type: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/events",
+    response_model=EventsResponse,
+    summary="Eventos recientes de IoT",
+    description="Obtiene eventos/alertas recientes desde raw_events (sensor_offline, low_battery, anomaly_detected, etc)"
+)
+async def get_iot_events_endpoint(
+    days: int = 30,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+) -> EventsResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        if limit < 1 or limit > 200:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Limit must be between 1 and 200"
+            )
+        
+        events_data = get_iot_events(db, days, limit)
+        
+        events_list = [
+            SensorEvent(
+                event_id=event["event_id"],
+                sensor_id=event["sensor_id"],
+                event_type=event["event_type"],
+                timestamp=event["timestamp"],
+                severity=event["severity"],
+                message=event["message"],
+                data=event["data"],
+            )
+            for event in events_data
+        ]
+        
+        critical_count = sum(1 for e in events_list if e.severity == "critical")
+        warning_count = sum(1 for e in events_list if e.severity == "warning")
+        info_count = sum(1 for e in events_list if e.severity == "info")
+        
+        return EventsResponse(
+            total_events=len(events_list),
+            critical_count=critical_count,
+            warning_count=warning_count,
+            info_count=info_count,
+            events=events_list
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting IoT events: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/timeline",
+    response_model=IoTTimelineResponse,
+    summary="Línea de tiempo de IoT",
+    description="Obtiene timeline de actividad IoT agrupada por fecha (últimos N días)"
+)
+async def get_iot_timeline_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> IoTTimelineResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        timeline_data = get_iot_timeline(db, days)
+        
+        if not timeline_data:
+            # Devolver respuesta válida incluso si no hay datos
+            start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+            end_date = datetime.utcnow().date().isoformat()
+            
+            return IoTTimelineResponse(
+                start_date=start_date,
+                end_date=end_date,
+                total_events=0,
+                timeline=[]
+            )
+        
+        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+        end_date = datetime.utcnow().date().isoformat()
+        total_events = sum(point["events_count"] for point in timeline_data)
+        
+        timeline_points = [
+            TimelinePoint(
+                date=point["date"],
+                events_count=point["events_count"],
+                sensors_online=point["sensors_online"],
+                sensors_offline=point["sensors_offline"],
+                avg_battery=point["avg_battery"],
+                anomalies=point["anomalies"],
+            )
+            for point in timeline_data
+        ]
+        
+        return IoTTimelineResponse(
+            start_date=start_date,
+            end_date=end_date,
+            total_events=total_events,
+            timeline=timeline_points
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating IoT timeline: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/health",
+    summary="Health check de analítica IoT",
+    description="Verifica disponibilidad del servicio de analítica IoT"
+)
+async def iot_health_check(db: Session = Depends(get_db)):
+    try:
+        kpis = get_all_iot_kpis(db)
+        return {
+            "status": "healthy",
+            "total_sensors": kpis["total_sensors"],
+            "online_sensors": kpis["online_sensors"],
+            "availability_rate": kpis["availability_rate"]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Health check failed: {str(e)}"
         )

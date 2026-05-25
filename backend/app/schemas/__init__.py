@@ -1,6 +1,16 @@
 from .event_schema import EventCreate, EventResponse, EventCreateResponse
 from .kpi_schema import KPIResponse, SubscriptionStats, SubscriptionSummary
 from .subscription_analytics_schema import SubscriptionTimelineResponse, SubscriptionTimelinePoint
+from .iot_kpi_schema import (
+    SensorKPIs, 
+    SensorStatus, 
+    SensorsStatusResponse, 
+    SensorsByTypeResponse,
+    SensorEvent,
+    EventsResponse,
+    IoTTimelineResponse,
+    IoTEventType
+)
 
 __all__ = [
     "EventCreate", 
@@ -10,5 +20,13 @@ __all__ = [
     "SubscriptionStats",
     "SubscriptionSummary",
     "SubscriptionTimelineResponse",
-    "SubscriptionTimelinePoint"
+    "SubscriptionTimelinePoint",
+    "SensorKPIs",
+    "SensorStatus",
+    "SensorsStatusResponse",
+    "SensorsByTypeResponse",
+    "SensorEvent",
+    "EventsResponse",
+    "IoTTimelineResponse",
+    "IoTEventType"
 ]
