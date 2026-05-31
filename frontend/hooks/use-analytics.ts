@@ -10,6 +10,7 @@ import {
   paymentsAPI,
   logisticsAPI,
   overviewAPI,
+  inventoryAPI,
 } from '@/services/api'
 import type { OrderChannelsResponse, OrderStatusResponse, OrderTimelineResponse } from '@/types/analytics'
 
@@ -118,4 +119,37 @@ export function useRecentActivities() {
 
 export function useCriticalAlerts() {
   return useSWR('overview-alerts', overviewAPI.getCriticalAlerts, swrConfig)
+}
+
+// Inventory hooks
+export function useInventoryKPIs() {
+  return useSWR('inventory-kpis', inventoryAPI.getKPIs, swrConfig)
+}
+
+export function useWarehouseCapacity() {
+  return useSWR('inventory-warehouse-capacity', inventoryAPI.getWarehouseCapacity, swrConfig)
+}
+
+export function useLowStockItems() {
+  return useSWR('inventory-low-stock', inventoryAPI.getLowStockItems, swrConfig)
+}
+
+export function useStockStatusSummary() {
+  return useSWR('inventory-stock-status', inventoryAPI.getStockStatus, swrConfig)
+}
+
+export function useLocationsCatalog(locationType?: string) {
+  return useSWR(
+    `inventory-locations-${locationType ?? 'all'}`,
+    () => inventoryAPI.getLocationsCatalog(locationType),
+    swrConfig,
+  )
+}
+
+export function useProductsThresholds(belowThreshold?: boolean) {
+  return useSWR(
+    `inventory-thresholds-${String(belowThreshold)}`,
+    () => inventoryAPI.getProductsThresholds(belowThreshold),
+    swrConfig,
+  )
 }

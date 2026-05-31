@@ -75,3 +75,15 @@ export const overviewAPI = {
   getRecentActivities: () => fetchAPI('/kpis/overview/activities?limit=10', mockData.recentActivities),
   getCriticalAlerts: () => fetchAPI('/kpis/overview/alerts?limit=10', mockData.criticalAlerts),
 }
+
+// Inventory API (Grupo 5 endpoints)
+export const inventoryAPI = {
+  getKPIs:             () => fetchAPI('/inventory/kpis',                           mockData.inventoryKPIs),
+  getWarehouseCapacity:() => fetchAPI('/inventory/snapshot?limit=50',              mockData.warehouseCapacity),
+  getLowStockItems:    () => fetchAPI('/products/thresholds?below_threshold=true', mockData.lowStockItems),
+  getStockStatus:      () => fetchAPI('/inventory/stock-status',                   mockData.stockStatusSummary),
+  getLocationsCatalog: (type?: string) =>
+    fetchAPI(`/locations/catalog${type ? `?location_type=${type}` : ''}`,         mockData.locationsCatalog),
+  getProductsThresholds:(belowThreshold?: boolean) =>
+    fetchAPI(`/products/thresholds${belowThreshold != null ? `?below_threshold=${belowThreshold}` : ''}`, mockData.productsThresholds),
+}

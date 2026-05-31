@@ -245,3 +245,89 @@ export interface Alert {
   source: string
   timestamp: string
 }
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+export type LocationType = 'WAREHOUSE' | 'DISTRIBUTION_CENTER' | 'RETAIL_POINT'
+export type StockStatus  = 'NORMAL' | 'CRITICAL' | 'OUT_OF_STOCK'
+
+export interface InventoryKPIs {
+  total_skus:        number
+  total_stock_value: number
+  warehouses_count:  number
+  low_stock_count:   number
+  out_of_stock_count:number
+  turnover_rate:     number
+}
+
+export interface WarehouseCapacity {
+  location_id:   string
+  location_code: string
+  location_name: string
+  location_type: LocationType
+  city:          string | null
+  stock:         number
+  capacity:      number
+  utilization:   number
+}
+
+export interface LowStockItem {
+  sku_id:                string
+  product_name:          string
+  category:              string
+  unit:                  string
+  critical_threshold:    number
+  total_available_stock: number
+  total_physical_stock:  number
+  total_reserved_stock:  number
+  locations_count:       number
+  is_out_of_stock:       boolean
+  last_updated:          string
+}
+
+export interface StockStatusSummary {
+  status:     StockStatus
+  count:      number
+  percentage: number
+}
+
+export interface LocationRow {
+  location_id:   string
+  location_code: string
+  location_name: string
+  location_type: LocationType
+  address:       string | null
+  city:          string | null
+  country:       string
+  is_active:     boolean
+  created_at:    string
+}
+
+export interface LocationsCatalogResponse {
+  data:         LocationRow[]
+  total:        number
+  generated_at: string
+}
+
+export interface ProductThresholdRow {
+  sku_id:                string
+  product_name:          string
+  category:              string
+  unit:                  string
+  critical_threshold:    number
+  total_physical_stock:  number
+  total_reserved_stock:  number
+  total_available_stock: number
+  locations_count:       number
+  is_below_threshold:    boolean
+  is_out_of_stock:       boolean
+  last_updated:          string
+}
+
+export interface ProductsThresholdsResponse {
+  data:                  ProductThresholdRow[]
+  total:                 number
+  total_below_threshold: number
+  total_out_of_stock:    number
+  generated_at:          string
+}
