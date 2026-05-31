@@ -285,6 +285,145 @@ POST http://localhost:8000/events
 
 ---
 
+## 🤖 Dominio: IoT
+
+### Eventos Soportados
+
+#### 1. **telemetry_received** - Datos de Telemetría
+```json
+POST http://localhost:8000/events
+
+{
+  "source": "iot_devices",
+  "event_type": "telemetry_received",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "temperature",
+    "temperature": 22.5,
+    "humidity": 65.0,
+    "battery": 85.0,
+    "signal_strength": -45,
+    "connection_status": "connected",
+    "timestamp": "2026-05-28T10:30:00Z"
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`  
+**Campos opcionales:** `temperature`, `humidity`, `acceleration`, `battery`, `signal_strength`, `connection_status`, `timestamp`  
+**Resultado:** Actualiza valores de telemetría en `fact_iot`, marca sensor como online
+
+---
+
+#### 2. **sensor_offline** - Sensor Desconectado
+```json
+{
+  "source": "iot_devices",
+  "event_type": "sensor_offline",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "temperature"
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`  
+**Resultado:** Marca `is_online=FALSE`, genera anomalía, crea evento de alerta
+
+---
+
+#### 3. **low_battery** - Batería Baja
+```json
+{
+  "source": "iot_devices",
+  "event_type": "low_battery",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "temperature",
+    "battery": 15.0
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`, `battery`  
+**Resultado:** Actualiza nivel de batería, marca `low_battery_alert=TRUE`, genera anomalía
+
+---
+
+#### 4. **out_of_range** - Lectura Fuera de Rango
+```json
+{
+  "source": "iot_devices",
+  "event_type": "out_of_range",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "temperature",
+    "current_value": 42.5
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`, `current_value`  
+**Resultado:** Marca `has_anomaly=TRUE`, registra evento de anomalía
+
+---
+
+#### 5. **signal_lost** - Señal Perdida
+```json
+{
+  "source": "iot_devices",
+  "event_type": "signal_lost",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "temperature",
+    "signal_strength": -100
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`  
+**Campos opcionales:** `signal_strength`  
+**Resultado:** Actualiza fuerza de señal, marca anomalía, mantiene estado actual
+
+---
+
+#### 6. **gps_updated** - Ubicación Actualizada
+```json
+{
+  "source": "iot_devices",
+  "event_type": "gps_updated",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "gps",
+    "location": "40.7128,-74.0060"
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`, `location`  
+**Resultado:** Actualiza ubicación en `fact_iot`, no marca anomalía
+
+---
+
+#### 7. **anomaly_detected** - Anomalía Detectada
+```json
+{
+  "source": "iot_devices",
+  "event_type": "anomaly_detected",
+  "payload": {
+    "sensor_id": "SENSOR-001",
+    "asset_id": "ASSET-100",
+    "sensor_type": "acceleration",
+    "severity": "critical"
+  }
+}
+```
+**Campos obligatorios:** `sensor_id`, `asset_id`, `sensor_type`  
+**Campos opcionales:** `severity` (warning|critical)  
+**Resultado:** Marca `has_anomaly=TRUE`, si severity=critical marca `is_online=FALSE`
+
+---
+
 ## 📊 Response Format
 
 ### Success (201 Created)
