@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { RoleGate } from "@/components/auth/role-gate";
 import { KPICard, KPICardSkeleton } from "@/components/dashboard/kpi-card";
 import {
   ChartCard,
@@ -50,8 +51,6 @@ import type {
   OrderStatusResponse,
   OrderTimelineResponse,
 } from "@/types/analytics";
-import { useEffect } from "react";
-
 const COLORS = [
   "var(--chart-1)",
   "var(--chart-2)",
@@ -73,7 +72,7 @@ const statusFormat: Record<string, string> = {
   stock_reserved: "Stock reservado",
   created: "Recien creado",
 };
-export default function OrdersPage() {
+function OrdersContent() {
   const { data: kpis, isLoading: kpisLoading } = useOrdersKPIs();
   const { data: channelsData, isLoading: channelsLoading } = useOrderChannels();
   const { data: statusesData, isLoading: statusesLoading } = useOrderStatuses();
@@ -83,13 +82,7 @@ export default function OrdersPage() {
   const statuses = statusesData as OrderStatusResponse | undefined;
   const timeline = timelineData as OrderTimelineResponse | undefined;
 
-  console.log("KPIs:", kpis);
-  console.log("Channels:", channels);
-  console.log("Statuses:", statuses);
-  console.log("Timeline:", timeline);
-
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -430,6 +423,15 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="orders">
+        <OrdersContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

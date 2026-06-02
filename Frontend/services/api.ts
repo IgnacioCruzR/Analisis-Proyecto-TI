@@ -23,10 +23,23 @@ async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, { headers })
-    if (!response.ok) throw new Error(`API Error ${response.status}`)
+    if (!response.ok) {
+      // 401 (sin token) y 403 (sin rol) son resultados legitimos del guard de
+      // backend. No son "errores" desde la perspectiva del usuario, son falta
+      // de permiso. No spameamos warn ni mostramos mock data porque ocultaria
+      // el problema real al developer.
+      if (response.status === 401 || response.status === 403) {
+        console.info(`[api] ${response.status} ${path} (sin permiso)`)
+      } else {
+        console.warn(`[api] Falla ${response.status} en ${path}, usando mock`)
+      }
+      return fallback
+    }
     return response.json()
   } catch (err) {
-    console.warn(`Using mock data for ${path}:`, err)
+    // Errores de red (backend caido, CORS, etc.). Caemos a mock para no
+    // romper la UI cuando se trabaja offline / sin backend.
+    console.warn(`[api] Network error en ${path}, usando mock:`, err)
     return fallback
   }
 }

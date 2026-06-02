@@ -1,6 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { RoleGate } from '@/components/auth/role-gate'
+import { useAuth } from '@/components/auth/auth-provider'
+import { canAccess, pickLandingPath } from '@/lib/roles'
 import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
 import { ChartCard, ChartCardSkeleton } from '@/components/dashboard/chart-card'
 import { DataTable, DataTableSkeleton } from '@/components/dashboard/data-table'
@@ -40,7 +45,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { ServiceStatus, Activity, Alert, OrderTimelineResponse } from '@/types/analytics'
 
-export default function OverviewPage() {
+function OverviewContent() {
   const { data: kpis, isLoading: kpisLoading } = useGlobalKPIs()
   const { data: services, isLoading: servicesLoading } = useServiceStatuses()
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities()
@@ -53,7 +58,6 @@ export default function OverviewPage() {
     : timelineRaw?.timeline ?? []
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex items-center justify-between">
@@ -318,6 +322,26 @@ export default function OverviewPage() {
           )}
         </div>
       </div>
+  )
+}
+
+export default function OverviewPage() {
+  const { roles } = useAuth()
+  const router = useRouter()
+
+  // Si el usuario no tiene rol overview, redirigirlo a la primera pagina que
+  // si pueda ver. Mejor UX que mostrarle "Acceso denegado" como landing.
+  useEffect(() => {
+    if (canAccess(roles, 'overview')) return
+    const target = pickLandingPath(roles)
+    if (target && target !== '/') router.replace(target)
+  }, [roles, router])
+
+  return (
+    <DashboardLayout>
+      <RoleGate domain="overview">
+        <OverviewContent />
+      </RoleGate>
     </DashboardLayout>
   )
 }
