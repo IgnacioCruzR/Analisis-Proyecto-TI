@@ -51,14 +51,20 @@ export function useSubscriptionRetentionRates() {
 }
 
 // Notifications hooks
-export function useNotificationKPIs() {
-  return useSWR('notifications-kpis', notificationsAPI.getKPIs, swrConfig)
+export function useNotificationKPIs(days: number = 1) {
+  return useSWR(`notifications-kpis-${days}`, () => notificationsAPI.getKPIs(days), swrConfig)
 }
 
-export function useNotificationChannels() {
-  return useSWR('notifications-channels', notificationsAPI.getChannels, swrConfig)
+export function useNotificationChannels(days: number = 1) {
+  return useSWR(`notifications-channels-${days}`, () => notificationsAPI.getChannels(days), swrConfig)
+}
+export function useNotificationStatus(days: number = 1) {
+  return useSWR(`notifications-status-${days}`, () => notificationsAPI.getStatus(days), swrConfig)
 }
 
+export function useNotificationTimeline(days: number = 1) {
+  return useSWR(`notifications-timeline-${days}`, () => notificationsAPI.getTimeline(days), swrConfig)
+}
 // IoT hooks
 export function useIoTKPIs(days: number = 30) {
   return useSWR(`iot-kpis-${days}`, () => iotAPI.getKPIs(days), swrConfig)

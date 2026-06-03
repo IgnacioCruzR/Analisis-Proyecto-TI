@@ -106,24 +106,56 @@ export interface RetentionRates {
 }
 // Notifications
 export interface NotificationKPIs {
-  totalSent: number
-  deliveryRate: number
-  failureRate: number
-  uptime: number
-  avgLatency: number
+  total_notifications: number
+  delivered_notifications: number
+  failed_notifications: number
+  fallback_notifications: number
+  failure_rate: number       // % notificaciones fallidas
+  delivery_rate: number      // % notificaciones entregadas (uptime del servicio)
+  backpressure_ratio: number // % notificaciones con fallback activado
+  avg_attempts: number
 }
-
+ 
 export interface NotificationChannel {
-  channel: string
-  sent: number
+  canal: string              // "sms" | "email" | "push"
+  total: number
   delivered: number
   failed: number
+  fallbacks: number
+  avg_attempts: number
+  delivery_rate: number      // %
+  failure_rate: number       // %
 }
-
+ 
+export interface NotificationChannelsResponse {
+  total_notifications: number
+  channels: NotificationChannel[]
+}
+ 
 export interface NotificationStatus {
-  status: string
+  estado: string             // "enviado" | "entregado" | "fallido"
   count: number
   percentage: number
+}
+ 
+export interface NotificationStatusResponse {
+  total_notifications: number
+  statuses: NotificationStatus[]
+}
+ 
+export interface NotificationTimelinePoint {
+  date: string
+  total: number
+  delivered: number
+  failed: number
+  fallbacks: number
+}
+ 
+export interface NotificationTimelineResponse {
+  start_date: string
+  end_date: string
+  total_notifications: number
+  timeline: NotificationTimelinePoint[]
 }
 
 // IoT
