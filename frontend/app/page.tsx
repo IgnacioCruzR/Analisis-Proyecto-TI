@@ -1,0 +1,233 @@
+'use client'
+
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { useGlobalKPIs, useServiceStatuses, useRecentActivities } from '@/hooks/use-analytics'
+import {
+  BarChart2,
+  Bell,
+  Cpu,
+  ShoppingCart,
+  RefreshCw,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Activity as ActivityLucide,
+  ChevronRight,
+  Heart,
+  AlertTriangle,
+  CreditCard,
+  Truck,
+  Box,
+  User,
+} from 'lucide-react'
+import Link from 'next/link'
+import type { ServiceStatus, Activity } from '@/types/analytics'
+
+// ── domain cards config ───────────────────────────────────────────────────────
+const DOMAINS = [
+  {
+    key: 'orders',
+    label: 'Pedidos',
+    description: 'Seguimiento omnicanal de órdenes y métricas de entrega',
+    href: '/orders',
+    icon: ShoppingCart,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'subscriptions',
+    label: 'Suscripciones',
+    description: 'Renovaciones, retención y ciclo de vida de contratos',
+    href: '/subscriptions',
+    icon: RefreshCw,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'notifications',
+    label: 'Notificaciones',
+    description: 'Entrega multicanal, fallbacks y uptime del servicio',
+    href: '/notifications',
+    icon: Bell,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'iot',
+    label: 'IoT',
+    description: 'Estado de sensores, telemetría y detección de anomalías',
+    href: '/iot',
+    icon: Cpu,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'health',
+    label: 'Salud',
+    description: 'Indicadores de bienestar, historial y alertas médicas',
+    href: '/health',
+    icon: Heart,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'incidents',
+    label: 'Incidentes',
+    description: 'Gestión de alertas, resolución y trazabilidad de fallas',
+    href: '/incidents',
+    icon: AlertTriangle,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'payments',
+    label: 'Pagos',
+    description: 'Procesamiento seguro, conciliación y métricas financieras',
+    href: '/payments',
+    icon: CreditCard,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'logistics',
+    label: 'Logística',
+    description: 'Rutas, entregas, optimización de transporte y costos',
+    href: '/logistics',
+    icon: Truck,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'inventory',
+    label: 'Inventario',
+    description: 'Stock disponible, rotación de productos y alertas',
+    href: '/inventory',
+    icon: Box,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'crm',
+    label: 'CRM',
+    description: 'Gestión de clientes, interacciones y métricas de fidelización',
+    href: '/crm',
+    icon: User,
+    accent: 'var(--chart-2)',
+  },
+]
+
+
+// ── status dot ────────────────────────────────────────────────────────────────
+function StatusDot({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    operational: 'bg-emerald-500',
+    degraded:    'bg-amber-400',
+    outage:      'bg-red-500',
+  }
+  return (
+    <span className={`inline-block h-2 w-2 rounded-full ${map[status] ?? 'bg-muted-foreground'}`} />
+  )
+}
+
+// ── activity icon ─────────────────────────────────────────────────────────────
+function ActivityIcon({ status }: { status?: string }) {
+  if (status === 'success') return <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+  if (status === 'error')   return <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+  return <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+}
+
+// ── relative time ─────────────────────────────────────────────────────────────
+function relativeTime(ts: string): string {
+  const diff = Date.now() - new Date(ts).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1)  return 'ahora'
+  if (m < 60) return `hace ${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `hace ${h}h`
+  return `hace ${Math.floor(h / 24)}d`
+}
+
+// ── page ──────────────────────────────────────────────────────────────────────
+export default function HomePage() {
+  const { data: services, isLoading: servicesLoading } = useServiceStatuses()
+  const { data: activities, isLoading: activitiesLoading } = useRecentActivities()
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-8 pb-8">
+
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card px-8 py-10">
+          {/* subtle grid texture */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+          {/* accent blob */}
+          <div
+            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
+            style={{ background: 'var(--chart-1)', opacity: 0.08 }}
+          />
+
+          <div className="relative flex flex-col gap-2 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              <ActivityLucide className="h-3.5 w-3.5" />
+              Sistema centralizado de análisis
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Bienvenido al Panel de Control
+            </h1>
+            <p className="text-muted-foreground leading-relaxed">
+              Monitorea en tiempo real el rendimiento de todos los dominios operacionales
+              — pedidos, suscripciones, notificaciones e IoT — desde un único lugar.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Domain Cards ─────────────────────────────────────────────── */}
+        <div>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+            Dominios
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {DOMAINS.map((d) => {
+              const Icon = d.icon
+              return (
+                <Link
+                  key={d.key}
+                  href={d.href}
+                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5"
+                >
+                  {/* accent top bar */}
+                  <div
+                    className="absolute inset-x-0 top-0 h-0.5 opacity-60 transition-opacity group-hover:opacity-100"
+                    style={{ background: d.accent }}
+                  />
+
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg"
+                      style={{ background: `${d.accent}18`, color: d.accent }}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="font-semibold text-foreground">{d.label}</div>
+                    <div className="mt-1 text-sm text-muted-foreground leading-snug">
+                      {d.description}
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Bottom Grid: Service Status + Activity ────────────────────── */}
+        <div className="grid gap-6 lg:grid-cols-2">
+
+ 
+
+        </div>
+      </div>
+    </DashboardLayout>
+  )
+}
