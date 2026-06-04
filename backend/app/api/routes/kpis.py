@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
+from app.auth import require_any_role
 from app.db import get_db
 from app.schemas import KPIResponse, SubscriptionSummary
 from app.schemas.orders_analytics_schema import (
@@ -94,17 +95,27 @@ from app.schemas.notifications_kpi_schema import (
     NotificationTimelinePoint,
 )
 
+SUBS_ROLES = ["admin", "analista", "subscriptions"]
+ORDERS_ROLES = ["admin", "analista", "orders"]
+SALUD_ROLES = ["admin", "analista", "salud"]
+INCIDENTS_ROLES = ["admin", "analista", "incidents"]
+OVERVIEW_ROLES = ["admin", "analista"]
+
+
 router = APIRouter(
     prefix="/kpis",
     tags=["analytics"],
     responses={
-        500: {"description": "Internal server error"}
-    }
+        401: {"description": "Falta token Bearer o token invalido"},
+        403: {"description": "El usuario no tiene rol suficiente"},
+        500: {"description": "Internal server error"},
+    },
 )
 
 
 @router.get(
     "/subscriptions/renewal-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de renovación de suscripciones",
     description="Retorna el porcentaje de suscripciones renovadas (renewed=true)"
@@ -127,6 +138,7 @@ async def get_renewal_rate_endpoint(
 
 @router.get(
     "/subscriptions/error-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de error de facturación",
     description="Retorna el porcentaje de suscripciones con errores de facturación (billing_success=false)"
@@ -149,6 +161,7 @@ async def get_error_rate_endpoint(
 
 @router.get(
     "/subscriptions/auto-service-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de auto-servicio",
     description="Retorna el porcentaje de suscripciones con auto-servicio habilitado (auto_service=true)"
@@ -171,6 +184,7 @@ async def get_auto_service_rate_endpoint(
 
 @router.get(
     "/subscriptions/summary",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=SubscriptionSummary,
     summary="Obtener resumen de KPIs de suscripciones",
     description="Retorna todos los KPIs de suscripciones. Puede filtrar por período de días"
@@ -287,6 +301,7 @@ async def get_subscriptions_retention(db: Session = Depends(get_db)):
 
 @router.get(
     "/orders/kpis",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=KPISResponse,
     summary="KPIs consolidados de órdenes",
     description="Retorna todos los KPIs principales del dominio Orders. Puede filtrar por período de días"
@@ -323,6 +338,7 @@ async def get_orders_kpis(days: int = 30, db: Session = Depends(get_db)) -> KPIS
 
 @router.get(
     "/orders/channels",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=ChannelsResponse,
     summary="Distribución de órdenes por canal",
     description="Obtiene distribución de órdenes por canal de venta (web, app, call_center, store). Puede filtrar por período de días"
@@ -375,6 +391,7 @@ async def get_orders_by_channels(days: int = 30, db: Session = Depends(get_db)) 
 
 @router.get(
     "/orders/status",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=StatusResponse,
     summary="Distribución de órdenes por estado",
     description="Obtiene distribución de órdenes por estado del ciclo de vida. Puede filtrar por período de días"
@@ -426,6 +443,7 @@ async def get_orders_by_statuses(days: int = 30, db: Session = Depends(get_db)) 
 
 @router.get(
     "/orders/timeline",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=TimelineResponse,
     summary="Línea de tiempo de órdenes",
     description="Obtiene línea de tiempo de órdenes grouped por fecha (últimos N días)"
@@ -479,6 +497,7 @@ async def get_orders_timeline(days: int = 30, db: Session = Depends(get_db)) -> 
 
 @router.get(
     "/orders/health",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     summary="Health check de analítica de órdenes",
     description="Verifica disponibilidad del servicio de analítica de órdenes"
 )
@@ -503,6 +522,7 @@ async def orders_health_check(db: Session = Depends(get_db)):
 
 @router.get(
     "/salud/dashboard",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludDashboardSummary,
     summary="KPIs agregados salud",
     description="Métricas desde dim_pacientes, dim_profesionales, dim_zonas y fact_visitas",
@@ -520,6 +540,7 @@ async def get_salud_dashboard(db: Session = Depends(get_db)) -> SaludDashboardSu
 
 @router.get(
     "/salud/visit-trends",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludVisitTrendsResponse,
     summary="Tendencia diaria de visitas",
     description="Conteo por fecha_programada: visitas totales y completadas (últimos N días)",
@@ -548,6 +569,7 @@ async def get_salud_visit_trends_endpoint(
 
 @router.get(
     "/salud/today-schedule",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludTodayScheduleResponse,
     summary="Agenda del día",
     description="Visitas con fecha_programada = hoy, con paciente y profesional desde dimensiones",
@@ -573,6 +595,7 @@ async def get_salud_today_schedule_endpoint(
 
 @router.get(
     "/incidents/kpis",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=IncidentKPIsResponse,
     summary="KPIs de gestión de incidentes",
     description="Métricas agregadas desde fact_incidents",
@@ -592,6 +615,7 @@ async def get_incidents_kpis_endpoint(
 
 @router.get(
     "/incidents/timeline",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentTimelinePoint],
     summary="Línea de tiempo de incidentes",
     description="Volumen diario: abiertos, resueltos y críticos (últimos N días)",
@@ -619,6 +643,7 @@ async def get_incidents_timeline_endpoint(
 
 @router.get(
     "/incidents/list",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentRow],
     summary="Lista de incidentes",
     description="Incidentes recientes desde el warehouse, ordenados por última actualización",
@@ -651,6 +676,7 @@ async def get_incidents_list_endpoint(
 
 @router.get(
     "/overview/kpis",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=GlobalKPIsResponse,
     summary="KPIs globales (overview)",
     description="Agrega métricas desde fact_orders, fact_incidents y fact_subscriptions",
@@ -669,6 +695,7 @@ async def get_overview_kpis_endpoint(
 
 @router.get(
     "/overview/services",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[ServiceStatusRow],
     summary="Estado de servicios",
     description="Estado derivado de incidentes activos por keywords del título",
@@ -688,6 +715,7 @@ async def get_overview_services_endpoint(
 
 @router.get(
     "/overview/activities",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[ActivityRow],
     summary="Actividad reciente",
     description="Últimos eventos cross-domain desde raw_events",
@@ -715,6 +743,7 @@ async def get_overview_activities_endpoint(
 
 @router.get(
     "/overview/alerts",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[AlertRow],
     summary="Alertas críticas",
     description="Incidentes activos con severidad critical/high",

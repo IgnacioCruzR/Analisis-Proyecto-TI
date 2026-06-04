@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { RoleGate } from '@/components/auth/role-gate'
 import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
 import { ChartCard } from '@/components/dashboard/chart-card'
 import { StatusBadge } from '@/components/dashboard/status-badge'
@@ -50,7 +51,7 @@ function formatAvgVisit(minutes: number | null | undefined): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-export default function HealthPage() {
+function HealthContent() {
   const { data: dashboard, error: errDash, isLoading: loadDash } = useSWR(
     'salud-dashboard',
     () => fetcher(fetchSaludDashboard),
@@ -82,7 +83,6 @@ export default function HealthPage() {
   const upcomingVisits: SaludTodayVisit[] = schedule?.visits ?? []
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Home Health Services</h1>
@@ -266,6 +266,15 @@ export default function HealthPage() {
           </CardContent>
         </Card>
       </div>
+  )
+}
+
+export default function HealthPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="salud">
+        <HealthContent />
+      </RoleGate>
     </DashboardLayout>
   )
 }

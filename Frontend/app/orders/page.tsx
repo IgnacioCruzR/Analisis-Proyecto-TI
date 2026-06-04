@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { RoleGate } from "@/components/auth/role-gate";
 import { KPICard, KPICardSkeleton } from "@/components/dashboard/kpi-card";
 import {
   ChartCard,
@@ -106,13 +107,7 @@ export default function OrdersPage() {
   const statuses = statusesData as OrderStatusResponse | undefined;
   const timeline = timelineData as OrderTimelineResponse | undefined;
 
-  console.log("KPIs:", kpis);
-  console.log("Channels:", channels);
-  console.log("Statuses:", statuses);
-  console.log("Timeline:", timeline);
-
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -492,6 +487,15 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="orders">
+        <OrdersContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

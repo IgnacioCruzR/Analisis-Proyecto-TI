@@ -1,5 +1,6 @@
 // API Service - Using mock data for now, ready to connect to real endpoints
-import * as mockData from "./mock-data";
+import * as mockData from './mock-data'
+import { getAccessToken } from '@/lib/keycloak'
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(
   /\/+$/,
@@ -15,13 +16,35 @@ async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
 
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const token = await getAccessToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`);
-    if (!response.ok) throw new Error(`API Error ${response.status}`);
-    return response.json();
+    const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+    if (!response.ok) {
+      // 401 (sin token) y 403 (sin rol) son resultados legitimos del guard de
+      // backend. No son "errores" desde la perspectiva del usuario, son falta
+      // de permiso. No spameamos warn ni mostramos mock data porque ocultaria
+      // el problema real al developer.
+      if (response.status === 401 || response.status === 403) {
+        console.info(`[api] ${response.status} ${path} (sin permiso)`)
+      } else {
+        console.warn(`[api] Falla ${response.status} en ${path}, usando mock`)
+      }
+      return fallback
+    }
+    return response.json()
   } catch (err) {
-    console.warn(`Using mock data for ${path}:`, err);
-    return fallback;
+    // Errores de red (backend caido, CORS, etc.). Caemos a mock para no
+    // romper la UI cuando se trabaja offline / sin backend.
+    console.warn(`[api] Network error en ${path}, usando mock:`, err)
+    return fallback
   }
 }
 

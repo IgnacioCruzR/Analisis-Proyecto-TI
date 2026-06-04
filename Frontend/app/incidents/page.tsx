@@ -1,6 +1,7 @@
 'use client'
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { RoleGate } from '@/components/auth/role-gate'
 import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
 import { ChartCard, ChartCardSkeleton } from '@/components/dashboard/chart-card'
 import { StatusBadge, SeverityBadge } from '@/components/dashboard/status-badge'
@@ -32,13 +33,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { Incident } from '@/types/analytics'
 
-export default function IncidentsPage() {
+function IncidentsContent() {
   const { data: kpis, isLoading: kpisLoading } = useIncidentKPIs()
   const { data: timeline, isLoading: timelineLoading } = useIncidentTimeline()
   const { data: incidents, isLoading: incidentsLoading } = useIncidents()
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex items-center justify-between">
@@ -225,6 +225,15 @@ export default function IncidentsPage() {
           </div>
         </ChartCard>
       </div>
+  )
+}
+
+export default function IncidentsPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="incidents">
+        <IncidentsContent />
+      </RoleGate>
     </DashboardLayout>
   )
 }

@@ -22,20 +22,30 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
+import { useAuth } from '@/components/auth/auth-provider'
+import { hasAnyRole } from '@/lib/roles'
 
-const navigation = [
-  { name: 'Overview', href: '/', icon: LayoutDashboard },
-  { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
-  { name: 'Suscripciones', href: '/subscriptions', icon: RefreshCw },
-  { name: 'Notificaciones', href: '/notifications', icon: Bell },
-  { name: 'IoT', href: '/iot', icon: Cpu },
-  { name: 'Pagos', href: '/payments', icon: CreditCard },
-  { name: 'Logística', href: '/logistics', icon: Truck },
-  { name: 'Inventario', href: '/inventory', icon: Package },
-  { name: 'CRM', href: '/crm', icon: Users },
-  { name: 'Incidentes', href: '/incidents', icon: AlertTriangle },
-  { name: 'Salud', href: '/health', icon: Heart },
-  { name: 'Identidad', href: '/security', icon: Shield },
+interface NavItem {
+  name: string
+  href: string
+  icon: typeof LayoutDashboard
+  roles: string[]
+}
+
+const navigation: NavItem[] = [
+  { name: 'Overview', href: '/', icon: LayoutDashboard, roles: ['admin', 'analista'] },
+  { name: 'Pedidos', href: '/orders', icon: ShoppingCart, roles: ['admin', 'analista', 'orders'] },
+  { name: 'Suscripciones', href: '/subscriptions', icon: RefreshCw, roles: ['admin', 'analista', 'subscriptions'] },
+  { name: 'Salud', href: '/health', icon: Heart, roles: ['admin', 'analista', 'salud'] },
+  { name: 'Incidentes', href: '/incidents', icon: AlertTriangle, roles: ['admin', 'analista', 'incidents'] },
+  // Modulos planeados (roadmap): visibles solo para admin hasta que se implementen.
+  { name: 'Notificaciones', href: '/notifications', icon: Bell, roles: ['admin'] },
+  { name: 'IoT', href: '/iot', icon: Cpu, roles: ['admin'] },
+  { name: 'Pagos', href: '/payments', icon: CreditCard, roles: ['admin'] },
+  { name: 'Logística', href: '/logistics', icon: Truck, roles: ['admin'] },
+  { name: 'Inventario', href: '/inventory', icon: Package, roles: ['admin'] },
+  { name: 'CRM', href: '/crm', icon: Users, roles: ['admin'] },
+  { name: 'Identidad', href: '/security', icon: Shield, roles: ['admin'] },
 ]
 
 interface SidebarProps {
@@ -44,7 +54,10 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const { roles } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
+
+  const visibleItems = navigation.filter((item) => hasAnyRole(roles, item.roles))
 
   return (
     <aside
@@ -76,7 +89,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-1">
-          {navigation.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <li key={item.name}>
