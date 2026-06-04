@@ -76,6 +76,14 @@ export const overviewAPI = {
   getCriticalAlerts: () => fetchAPI('/kpis/overview/alerts?limit=10', mockData.criticalAlerts),
 }
 
+// CRM API
+export const crmAPI = {
+  getKPIs:    ()            => fetchAPI('/kpis/crm/kpis',              mockData.crmKPIs),
+  getTimeline:(days = 14)   => fetchAPI(`/kpis/crm/timeline?days=${days}`, mockData.crmTimeline),
+  getTickets: ()            => fetchAPI('/kpis/crm/tickets',           mockData.crmTickets),
+  getSLA:     ()            => fetchAPI('/kpis/crm/sla',               mockData.crmSLA),
+}
+
 // Inventory API (Grupo 5 endpoints)
 export const inventoryAPI = {
   getKPIs:             () => fetchAPI('/inventory/kpis',                           mockData.inventoryKPIs),

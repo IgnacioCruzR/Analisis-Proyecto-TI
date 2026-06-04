@@ -11,6 +11,7 @@ import {
   logisticsAPI,
   overviewAPI,
   inventoryAPI,
+  crmAPI,
 } from '@/services/api'
 import type { OrderChannelsResponse, OrderStatusResponse, OrderTimelineResponse } from '@/types/analytics'
 
@@ -119,6 +120,23 @@ export function useRecentActivities() {
 
 export function useCriticalAlerts() {
   return useSWR('overview-alerts', overviewAPI.getCriticalAlerts, swrConfig)
+}
+
+// CRM hooks
+export function useCRMKPIs() {
+  return useSWR('crm-kpis', crmAPI.getKPIs, swrConfig)
+}
+
+export function useCRMTimeline(days = 14) {
+  return useSWR(`crm-timeline-${days}`, () => crmAPI.getTimeline(days), swrConfig)
+}
+
+export function useCRMTickets() {
+  return useSWR('crm-tickets', crmAPI.getTickets, swrConfig)
+}
+
+export function useCRMSLA() {
+  return useSWR('crm-sla', crmAPI.getSLA, swrConfig)
 }
 
 // Inventory hooks

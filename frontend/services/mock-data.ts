@@ -28,6 +28,10 @@ import type {
   StockStatusSummary,
   LocationsCatalogResponse,
   ProductsThresholdsResponse,
+  CRMKPIs,
+  CRMTimeline,
+  CRMTicketsResponse,
+  CRMSLASummary,
 } from "@/types/analytics";
 
 // Orders Mock Data
@@ -663,6 +667,46 @@ export const productsThresholds: ProductsThresholdsResponse = {
   total_below_threshold: 5,
   total_out_of_stock:    2,
   generated_at:          new Date().toISOString(),
+}
+
+// ─── CRM Mock Data ───────────────────────────────────────────────────────────
+
+export const crmKPIs: CRMKPIs = {
+  totalCustomers:         24856,
+  openTickets:            142,
+  avgResponseTimeMinutes: 18,
+  csatScore:              4.7,
+  messagesToday:          1245,
+  resolutionRate:         94.5,
+}
+
+export const crmTimeline: CRMTimeline = {
+  days: 14,
+  points: Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (13 - i))
+    return {
+      date:     d.toISOString().split('T')[0],
+      opened:   Math.floor(80 + Math.random() * 40),
+      resolved: Math.floor(75 + Math.random() * 45),
+    }
+  }),
+}
+
+export const crmTickets: CRMTicketsResponse = {
+  tickets: [
+    { ticketId: 'TKT-4521', asunto: 'Problema con pago de suscripción', estado: 'abierto',       prioridad: 'alta',  canal: 'email',   sourceProject: 'pagos',      openedAt: new Date(Date.now() - 10 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 10 * 60000).toISOString() },
+    { ticketId: 'TKT-4520', asunto: 'No puede acceder a su cuenta',     estado: 'en_progreso',   prioridad: 'media', canal: 'chat',    sourceProject: 'auth',       openedAt: new Date(Date.now() - 25 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 20 * 60000).toISOString() },
+    { ticketId: 'TKT-4519', asunto: 'Solicitud: exportar a CSV',        estado: 'abierto',       prioridad: 'baja',  canal: 'portal',  sourceProject: 'analytics',  openedAt: new Date(Date.now() - 60 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 60 * 60000).toISOString() },
+    { ticketId: 'TKT-4518', asunto: 'Integración no funciona',          estado: 'cerrado',       prioridad: 'alta',  canal: 'email',   sourceProject: 'inventario', openedAt: new Date(Date.now() - 120 * 60000).toISOString(), updatedAt: new Date(Date.now() - 30 * 60000).toISOString() },
+    { ticketId: 'TKT-4517', asunto: 'Error al generar reporte mensual', estado: 'en_progreso',   prioridad: 'media', canal: 'telefono',sourceProject: 'orders',     openedAt: new Date(Date.now() - 180 * 60000).toISOString(), updatedAt: new Date(Date.now() - 45 * 60000).toISOString() },
+  ],
+}
+
+export const crmSLA: CRMSLASummary = {
+  totalViolations:    8,
+  criticalViolations: 2,
+  slaComplianceRate:  94.5,
 }
 
 // Global KPIs for Overview

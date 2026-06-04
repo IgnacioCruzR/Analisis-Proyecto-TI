@@ -331,3 +331,46 @@ export interface ProductsThresholdsResponse {
   total_out_of_stock:    number
   generated_at:          string
 }
+
+// ─── CRM ─────────────────────────────────────────────────────────────────────
+
+export interface CRMKPIs {
+  totalCustomers: number
+  openTickets: number
+  avgResponseTimeMinutes: number
+  csatScore: number
+  messagesToday: number
+  resolutionRate: number
+}
+
+export interface CRMTimelinePoint {
+  date: string
+  opened: number
+  resolved: number
+}
+
+export interface CRMTimeline {
+  days: number
+  points: CRMTimelinePoint[]
+}
+
+export interface CRMTicketRow {
+  ticketId: string
+  asunto: string
+  estado: string
+  prioridad: string
+  canal: string
+  sourceProject: string
+  openedAt: string
+  updatedAt: string
+}
+
+export interface CRMTicketsResponse {
+  tickets: CRMTicketRow[]
+}
+
+export interface CRMSLASummary {
+  totalViolations: number
+  criticalViolations: number
+  slaComplianceRate: number
+}
