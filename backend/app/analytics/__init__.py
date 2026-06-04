@@ -11,5 +11,5 @@ __all__ = [
     "get_error_rate",
     "get_auto_service_rate",
     "get_subscription_stats",
-    "get_subscription_summary"
+    "get_subscription_summary",
 ]

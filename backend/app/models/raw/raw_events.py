@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Index
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 from app.db.base import Base
 
 
@@ -16,8 +16,8 @@ class RawEvent(Base):
     # Event Type (e.g., "subscription_created", "order_placed")
     event_type = Column(String(100), nullable=False, index=True)
     
-    # Event payload in JSONB for flexibility
-    payload = Column(JSONB, nullable=True)
+    # Event payload in JSON for flexibility (works with SQLite and Postgres)
+    payload = Column(JSON, nullable=True)
     
     # Processing flag
     processed = Column(Boolean, default=False, index=True)
