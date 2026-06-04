@@ -8,6 +8,8 @@ from app.models.warehouse import (
     FactInteraccion,
     FactTicketArticulo,
     FactSlaViolacion,
+    FactInventoryMovement,
+    FactInventoryAlert,
 )
 
 __all__ = [
@@ -20,4 +22,6 @@ __all__ = [
     "FactInteraccion",
     "FactTicketArticulo",
     "FactSlaViolacion",
+    "FactInventoryMovement",
+    "FactInventoryAlert",
 ]

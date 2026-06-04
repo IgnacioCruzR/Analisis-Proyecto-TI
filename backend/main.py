@@ -20,6 +20,8 @@ from app.models.warehouse import (
     FactInteraccion,
     FactTicketArticulo,
     FactSlaViolacion,
+    FactInventoryMovement,
+    FactInventoryAlert,
 )
 from app.models.warehouse.alerts import PriorityAlert
 from app.pagos.models import (
@@ -56,6 +58,8 @@ _ = (
     FactInteraccion,
     FactTicketArticulo,
     FactSlaViolacion,
+    FactInventoryMovement,
+    FactInventoryAlert,
 )
 
 Base.metadata.create_all(bind=engine)

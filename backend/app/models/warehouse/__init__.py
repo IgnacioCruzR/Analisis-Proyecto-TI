@@ -6,6 +6,8 @@ from .dim_clientes_crm import DimClienteCRM
 from .fact_interacciones import FactInteraccion
 from .fact_ticket_articulos import FactTicketArticulo
 from .fact_sla_violaciones import FactSlaViolacion
+from .fact_inventory_movements import FactInventoryMovement
+from .fact_inventory_alerts import FactInventoryAlert
 
 # Healthcare System DWH Models
 try:
@@ -43,6 +45,8 @@ __all__ = [
     "FactInteraccion",
     "FactTicketArticulo",
     "FactSlaViolacion",
+    "FactInventoryMovement",
+    "FactInventoryAlert",
     "DimUsuarios",
     "DimProfesionales",
     "DimZonas",

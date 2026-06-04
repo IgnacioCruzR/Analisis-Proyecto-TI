@@ -16,6 +16,7 @@ from app.etl.processors.subscription_processor import process_subscription_event
 from app.etl.processors.salud_processor import process_salud_event
 from app.etl.processors.incident_processor import process_incident_event
 from app.etl.processors.crm_processor import process_crm_event
+from app.etl.processors.inventory_processor import process_inventory_event
 from app.pagos.services.payment_service import register_payment_attempt, confirm_payment
 from app.pagos.models.fact_payments_events import FactPaymentsEvent
 
@@ -40,6 +41,7 @@ _ETL_PROCESSORS = {
     "salud": process_salud_event,
     "incidents": process_incident_event,
     "crm": process_crm_event,
+    "inventory": process_inventory_event,
 }
 
 
