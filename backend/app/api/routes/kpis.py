@@ -7,7 +7,8 @@ from app.db import get_db
 from app.schemas import KPIResponse, SubscriptionSummary
 from app.schemas.orders_analytics_schema import (
     KPISResponse, ChannelsResponse, StatusResponse, TimelineResponse,
-    ChannelMetric, StatusMetric
+    ChannelMetric as OrderChannelMetric, StatusMetric as OrderStatusMetric,
+
 )
 from app.schemas.subscription_analytics_schema import (
     SubscriptionTimelineResponse, SubscriptionTimelinePoint
@@ -87,10 +88,10 @@ from app.analytics.notifications_kpis import (
 )
 from app.schemas.notifications_kpi_schema import (
     NotificationKPIs,
-    ChannelsResponse,
-    ChannelMetric,
-    StatusResponse,
-    StatusMetric,
+    ChannelsResponse as NotificationChannelsResponse,
+    ChannelMetric as NotificationChannelMetric,
+    StatusResponse as NotificationStatusResponse,
+    StatusMetric as NotificationStatusMetric,
     NotificationTimelineResponse,
     NotificationTimelinePoint,
 )
@@ -363,12 +364,14 @@ async def get_orders_by_channels(days: int = 30, db: Session = Depends(get_db)) 
         
         channels_list = []
         for channel, count, revenue in channels_data:
+            if channel is None:      # ignorar filas sin canal
+                continue
             percentage = (count / total * 100) if total > 0 else 0
             channels_list.append(
-                ChannelMetric(
-                    channel=channel,
-                    order_count=count,
-                    revenue=round(revenue, 2),
+                OrderChannelMetric(
+                    channel=channel or "unknown",
+                    order_count=count or 0,
+                    revenue=round(float(revenue) if revenue else 0.0, 2),
                     percentage_of_total=round(percentage, 2)
                 )
             )
@@ -418,7 +421,7 @@ async def get_orders_by_statuses(days: int = 30, db: Session = Depends(get_db)) 
         for status_name, count in status_data:
             percentage = (count / total * 100) if total > 0 else 0
             statuses_list.append(
-                StatusMetric(
+                OrderStatusMetric(
                     status=status_name,
                     count=count,
                     percentage_of_total=round(percentage, 2)
@@ -1081,7 +1084,7 @@ async def get_notifications_kpis_endpoint(
 
 @router.get(
     "/notifications/channels",
-    response_model=ChannelsResponse,
+    response_model=NotificationChannelsResponse,
     summary="Métricas por canal",
     description="Tasa de entrega y fallos desglosada por canal (sms, email, push)"
 )
@@ -1089,15 +1092,15 @@ async def get_notifications_kpis_endpoint(
 async def get_notifications_channels_endpoint(
     days: int = 30,
     db: Session = Depends(get_db)
-) -> ChannelsResponse:
+) -> NotificationChannelsResponse:
     try:
         if days < 1 or days > 365:
             raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
         channels = get_notifications_by_channel(db, days)
         total = sum(c["total"] for c in channels)
-        return ChannelsResponse(
+        return NotificationChannelsResponse(
             total_notifications=total,
-            channels=[ChannelMetric(**c) for c in channels]
+            channels=[NotificationChannelMetric(**c) for c in channels]
         )
     except HTTPException:
         raise
@@ -1107,22 +1110,22 @@ async def get_notifications_channels_endpoint(
 
 @router.get(
     "/notifications/status",
-    response_model=StatusResponse,
+    response_model=NotificationStatusResponse,
     summary="Distribución por estado",
     description="Conteo de notificaciones en estado enviado, entregado y fallido"
 )
 async def get_notifications_status_endpoint(
     days: int = 30,
     db: Session = Depends(get_db)
-) -> StatusResponse:
+) -> NotificationStatusResponse:
     try:
         if days < 1 or days > 365:
             raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
         statuses = get_notifications_by_status(db, days)
         total = sum(s["count"] for s in statuses)
-        return StatusResponse(
+        return NotificationStatusResponse(
             total_notifications=total,
-            statuses=[StatusMetric(**s) for s in statuses]
+            statuses=[NotificationStatusMetric(**s) for s in statuses]
         )
     except HTTPException:
         raise

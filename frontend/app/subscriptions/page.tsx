@@ -52,8 +52,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { RoleGate } from "@/components/auth/role-gate";
 
-export default function SubscriptionsPage() {
+function SubscriptionContent() {
   const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
   type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
   const { data: kpis, isLoading: kpisLoading } = useSubscriptionKPIs(selectedDays);
@@ -75,7 +76,6 @@ export default function SubscriptionsPage() {
   console.log("Subscription Timeline:", timeline);
   console.log("Retention Rates:", retentionRates);
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -312,6 +312,15 @@ export default function SubscriptionsPage() {
    
         </div>
       </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="subscriptions">
+        <SubscriptionContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

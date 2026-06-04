@@ -96,7 +96,7 @@ const filterDaysLabel: Record<AllowedDays, string> = {
   365: "Últimos 365 días",
 };
 
-export default function OrdersPage() {
+function OrdersContent() {
   const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
   const { data: kpis, isLoading: kpisLoading } = useOrdersKPIs(selectedDays);
   const { data: channelsData, isLoading: channelsLoading } = useOrderChannels(selectedDays);
@@ -106,7 +106,7 @@ export default function OrdersPage() {
   const channels = channelsData as OrderChannelsResponse | undefined;
   const statuses = statusesData as OrderStatusResponse | undefined;
   const timeline = timelineData as OrderTimelineResponse | undefined;
-
+console.log (channels)
   return (
       <div className="space-y-6">
         {/* Page Header */}

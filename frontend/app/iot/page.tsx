@@ -52,9 +52,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { RoleGate } from "@/components/auth/role-gate";
 type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
 
-export default function IoTPage() {
+function IotContent() {
   const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
 
   const filterDaysLabel: Record<AllowedDays, string> = {
@@ -106,15 +107,14 @@ export default function IoTPage() {
       : [];
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            IoT Monitoring
+            Monitoreo IOT
           </h1>
           <p className="text-muted-foreground">
-            Real-time device telemetry and sensor analytics
+            Telemetría en tiempo real de dispositivos y análisis de sensores
           </p>
         </div>
 
@@ -325,6 +325,15 @@ export default function IoTPage() {
           </Card>
         ) : null}
       </div>
+  );
+}
+
+export default function IotPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="iot">
+        <IotContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

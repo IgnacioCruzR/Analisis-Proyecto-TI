@@ -424,7 +424,7 @@ POST http://localhost:8000/events
 
 ---
 
-## � Dominio: NOTIFICATIONS
+## 🔔 Dominio: NOTIFICATIONS
 
 ### Eventos Soportados
 

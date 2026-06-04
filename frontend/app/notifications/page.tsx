@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { RoleGate } from "@/components/auth/role-gate";
 
 // ── types que vienen del backend ──────────────────────────────────────────────
 // GET /kpis/notifications/kpis
@@ -130,7 +131,7 @@ const filterDaysLabel: Record<AllowedDays, string> = {
   365: "Últimos 365 días",
 };
 // ── page ──────────────────────────────────────────────────────────────────────
-export default function NotificationsPage() {
+function NotificationContent() {
   const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
 
   const { data: kpis, isLoading: kpisLoading } =
@@ -149,7 +150,6 @@ export default function NotificationsPage() {
       channel: CANAL_LABELS[c.canal] ?? c.canal,
     })) ?? [];
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -479,6 +479,16 @@ export default function NotificationsPage() {
           )}
         </ChartCard>
       </div>
+  );
+} 
+
+export default function NotificationPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="notifications">
+        <NotificationContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }
+
