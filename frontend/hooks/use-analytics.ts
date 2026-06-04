@@ -96,6 +96,14 @@ export function usePaymentTimeline() {
   return useSWR('payments-timeline', paymentsAPI.getTimeline, swrConfig)
 }
 
+export function usePaymentFailures(hours = 24, topN = 10) {
+  return useSWR(`payments-failures-${hours}-${topN}`, () => paymentsAPI.getFailures(hours, topN), swrConfig)
+}
+
+export function usePaymentConciliation(hours = 24) {
+  return useSWR(`payments-conciliation-${hours}`, () => paymentsAPI.getConciliation(hours), swrConfig)
+}
+
 // Logistics hooks
 export function useLogisticsKPIs() {
   return useSWR('logistics-kpis', logisticsAPI.getKPIs, swrConfig)

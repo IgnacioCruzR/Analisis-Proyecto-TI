@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, literal_column
@@ -155,4 +155,103 @@ def get_rejection_rate_and_top_reasons(db: Session, start: datetime, end: dateti
         "total": int(total),
         "failed": int(failed),
         "top_reasons": top_reasons,
+    }
+
+
+def get_failure_reasons(db: Session, hours: int = 24, top_n: int = 10) -> Dict[str, Any]:
+    """Razones de fallo con descripción legible para el dashboard de pagos.
+
+    Usa una ventana rodante de `hours` horas hacia atrás desde ahora.
+    Devuelve: { rejection_rate, total, failed, reasons: [{reason, count, percentage}] }
+    """
+    start = datetime.utcnow() - timedelta(hours=hours)
+
+    total = (
+        db.query(func.count(FactPagos.transaction_id))
+        .filter(FactPagos.timestamp_evento >= start)
+        .scalar() or 0
+    )
+
+    failed = (
+        db.query(func.count(FactPagos.transaction_id))
+        .join(DimEstadosConciliacion, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
+        .filter(
+            DimEstadosConciliacion.nombre != "Aprobado",
+            FactPagos.timestamp_evento >= start,
+        )
+        .scalar() or 0
+    )
+
+    rejection_rate = round(float(failed) / float(total) * 100.0, 2) if total else 0.0
+
+    reasons_q = (
+        db.query(
+            DimErrorCode.descripcion.label("reason"),
+            func.count(FactPagos.transaction_id).label("cnt"),
+        )
+        .join(DimEstadosConciliacion, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
+        .join(DimErrorCode, FactPagos.error_code_id == DimErrorCode.id)
+        .filter(
+            DimEstadosConciliacion.nombre != "Aprobado",
+            FactPagos.timestamp_evento >= start,
+            FactPagos.error_code_id.isnot(None),
+        )
+        .group_by(DimErrorCode.descripcion)
+        .order_by(func.count(FactPagos.transaction_id).desc())
+        .limit(top_n)
+    )
+
+    reasons = [
+        {
+            "reason":     row.reason,
+            "count":      int(row.cnt),
+            "percentage": round(float(row.cnt) / float(failed) * 100.0, 1) if failed else 0.0,
+        }
+        for row in reasons_q
+    ]
+
+    return {
+        "rejection_rate": rejection_rate,
+        "total":          int(total),
+        "failed":         int(failed),
+        "reasons":        reasons,
+    }
+
+
+def get_conciliation_summary(db: Session, hours: int = 24) -> Dict[str, Any]:
+    """Distribución de transacciones por estado de conciliación.
+
+    Ventana rodante de `hours` horas. Devuelve statuses, total y approval_rate.
+    """
+    start = datetime.utcnow() - timedelta(hours=hours)
+
+    rows = (
+        db.query(
+            DimEstadosConciliacion.nombre.label("status"),
+            func.count(FactPagos.transaction_id).label("cnt"),
+        )
+        .join(FactPagos, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
+        .filter(FactPagos.timestamp_evento >= start)
+        .group_by(DimEstadosConciliacion.nombre)
+        .order_by(func.count(FactPagos.transaction_id).desc())
+        .all()
+    )
+
+    total = sum(int(r.cnt) for r in rows)
+    approved_count = next((int(r.cnt) for r in rows if r.status == "Aprobado"), 0)
+    approval_rate  = round(float(approved_count) / float(total) * 100.0, 2) if total else 0.0
+
+    statuses = [
+        {
+            "status":     r.status,
+            "count":      int(r.cnt),
+            "percentage": round(float(r.cnt) / float(total) * 100.0, 1) if total else 0.0,
+        }
+        for r in rows
+    ]
+
+    return {
+        "statuses":     statuses,
+        "total":        total,
+        "approval_rate": approval_rate,
     }

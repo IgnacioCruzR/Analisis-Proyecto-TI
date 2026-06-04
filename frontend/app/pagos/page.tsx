@@ -3,7 +3,12 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { KPICard, KPICardSkeleton } from "@/components/dashboard/kpi-card";
 import { ChartCard, ChartCardSkeleton } from "@/components/dashboard/chart-card";
-import { usePaymentKPIs, usePaymentTimeline } from "@/hooks/use-analytics";
+import {
+  usePaymentKPIs,
+  usePaymentTimeline,
+  usePaymentFailures,
+  usePaymentConciliation,
+} from "@/hooks/use-analytics";
 import {
   CreditCard,
   DollarSign,
@@ -28,7 +33,7 @@ import {
   BarChart,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { PaymentTimeline } from "@/types/analytics";
+import type { PaymentTimeline, PaymentFailure, ConciliationStatus } from "@/types/analytics";
 
 const COLORS = [
   "var(--chart-1)",
@@ -45,24 +50,31 @@ const paymentMethods = [
   { name: "Billetera Digital", value: 10.0 },
 ];
 
-const failureReasons = [
-  { reason: "Fondos insuficientes", count: 186, percentage: 45.1 },
-  { reason: "Tarjeta rechazada", count: 98, percentage: 23.8 },
-  { reason: "Timeout de gateway", count: 72, percentage: 17.5 },
-  { reason: "Error de validación", count: 56, percentage: 13.6 },
-];
+const STATUS_COLORS: Record<string, string> = {
+  "Aprobado":                        "var(--chart-1)",
+  "esperando_revisión":              "var(--chart-3)",
+  "discrepancia_de_monto":           "var(--chart-5)",
+  "discrepancia_de_transacciones":   "var(--chart-4)",
+};
 
-const conciliationStatus = [
-  { status: "Aprobado", count: 44820, color: "var(--chart-1)" },
-  { status: "Pendiente", count: 660, color: "var(--chart-3)" },
-  { status: "Rechazado", count: 412, color: "var(--chart-5)" },
-];
+const STATUS_LABELS: Record<string, string> = {
+  "Aprobado":                        "Aprobado",
+  "esperando_revisión":              "Pendiente revisión",
+  "discrepancia_de_monto":           "Discrepancia monto",
+  "discrepancia_de_transacciones":   "Discrepancia transac.",
+};
 
 export default function PaymentsPage() {
-  const { data: kpis, isLoading: kpisLoading } = usePaymentKPIs();
-  const { data: timeline, isLoading: timelineLoading } = usePaymentTimeline();
+  const { data: kpis,          isLoading: kpisLoading }          = usePaymentKPIs();
+  const { data: timeline,      isLoading: timelineLoading }      = usePaymentTimeline();
+  const { data: failures,      isLoading: failuresLoading }      = usePaymentFailures();
+  const { data: conciliation,  isLoading: conciliationLoading }  = usePaymentConciliation();
 
-  const timelineData = (timeline as PaymentTimeline[] | undefined) ?? [];
+  const timelineData    = (timeline as PaymentTimeline[] | undefined) ?? [];
+  const failureReasons  = (failures?.reasons ?? []) as PaymentFailure[];
+  const concilStatuses  = (conciliation?.statuses ?? []) as ConciliationStatus[];
+  const concilTotal     = conciliation?.total ?? 0;
+  const approvalRate    = conciliation?.approval_rate ?? 0;
 
   return (
     <DashboardLayout>
@@ -246,99 +258,98 @@ export default function PaymentsPage() {
           </ChartCard>
 
           {/* Failure Reasons */}
-          <ChartCard
-            title="Razones de fallo"
-            description="Principales causas de rechazo de transacciones"
-          >
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={failureReasons} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
-                  <YAxis
-                    dataKey="reason"
-                    type="category"
-                    stroke="var(--muted-foreground)"
-                    fontSize={11}
-                    width={130}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--popover)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
-                  <Bar
-                    dataKey="count"
-                    fill="var(--chart-5)"
-                    radius={[0, 4, 4, 0]}
-                    name="Fallos"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
+          {failuresLoading ? (
+            <ChartCardSkeleton />
+          ) : (
+            <ChartCard
+              title="Razones de fallo"
+              description={`Tasa de rechazo: ${failures?.rejection_rate?.toFixed(1) ?? 0}% — top causas`}
+            >
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={failureReasons} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
+                    <YAxis
+                      dataKey="reason"
+                      type="category"
+                      stroke="var(--muted-foreground)"
+                      fontSize={11}
+                      width={140}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--popover)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "var(--foreground)" }}
+                      formatter={(v: number, _: string, entry: { payload?: PaymentFailure }) =>
+                        [`${v} (${entry?.payload?.percentage ?? 0}%)`, "Fallos"]
+                      }
+                    />
+                    <Bar dataKey="count" fill="var(--chart-5)" radius={[0, 4, 4, 0]} name="Fallos" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          )}
 
           {/* Conciliation Status */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Estado de conciliación
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Desglose del resultado de transacciones
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {conciliationStatus.map((item) => {
-                  const total = conciliationStatus.reduce((s, c) => s + c.count, 0);
-                  const pct = ((item.count / total) * 100).toFixed(1);
-                  return (
+          {conciliationLoading ? (
+            <ChartCardSkeleton />
+          ) : (
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Estado de conciliación
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Desglose del resultado de transacciones
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {concilStatuses.map((item) => (
                     <div key={item.status} className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-foreground">
-                          {item.status}
+                          {STATUS_LABELS[item.status] ?? item.status}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          {item.count.toLocaleString('es-CL')} ({pct}%)
+                          {item.count.toLocaleString("es-CL")} ({item.percentage}%)
                         </span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, backgroundColor: item.color }}
+                          style={{
+                            width: `${item.percentage}%`,
+                            backgroundColor: STATUS_COLORS[item.status] ?? "var(--chart-3)",
+                          }}
                         />
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
 
-                <div className="pt-4 border-t border-border space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tasa de aprobación</span>
-                    <span className="font-semibold text-foreground">
-                      {(
-                        (conciliationStatus[0].count /
-                          conciliationStatus.reduce((s, c) => s + c.count, 0)) *
-                        100
-                      ).toFixed(2)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total procesado</span>
-                    <span className="font-semibold text-foreground">
-                      {conciliationStatus
-                        .reduce((s, c) => s + c.count, 0)
-                        .toLocaleString('es-CL')}
-                    </span>
+                  <div className="pt-4 border-t border-border space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tasa de aprobación</span>
+                      <span className="font-semibold text-foreground">
+                        {approvalRate.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total procesado</span>
+                      <span className="font-semibold text-foreground">
+                        {concilTotal.toLocaleString("es-CL")}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>

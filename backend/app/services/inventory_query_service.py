@@ -276,6 +276,113 @@ _SQL_THRESHOLDS = text("""
 """)
 
 
+# ============================================================================
+#  §4  GET /inventory/kpis
+#      Agrega total_skus, warehouses_count, low_stock_count, out_of_stock_count
+#      directamente desde la BD del grupo de inventario (mismo patrón §1–§3).
+#
+#      total_stock_value → 0.0  (requiere unit_price, pendiente del grupo externo)
+#      turnover_rate     → 0.0  (requiere historial de movimientos vía EDA)
+# ============================================================================
+
+_SQL_KPI_SKUS = text("""
+    WITH stock_por_sku AS (
+        SELECT
+            inv.sku_id,
+            SUM(GREATEST(inv.physical_stock - inv.reserved_stock, 0)) AS total_available,
+            MAX(inv.critical_threshold)                                AS threshold
+        FROM  inventory  inv
+        INNER JOIN locations loc ON loc.id = inv.location_id
+        WHERE loc.is_active = TRUE
+        GROUP BY inv.sku_id
+    )
+    SELECT
+        COUNT(*)                                             AS total_skus,
+        COUNT(*) FILTER (WHERE total_available <= threshold) AS low_stock_count,
+        COUNT(*) FILTER (WHERE total_available = 0)          AS out_of_stock_count
+    FROM stock_por_sku
+""")
+
+_SQL_KPI_WAREHOUSES = text("""
+    SELECT COUNT(*) AS warehouses_count
+    FROM  locations
+    WHERE is_active      = TRUE
+      AND location_type  = 'WAREHOUSE'
+""")
+
+
+def get_inventory_kpis(db: Session) -> Dict[str, Any]:
+    """
+    Retorna los KPIs globales de inventario.
+    Combina dos queries contra la BD del grupo de inventario:
+    una para los conteos por SKU y otra para el conteo de bodegas.
+    """
+    sku_row = db.execute(_SQL_KPI_SKUS).fetchone()
+    wh_row  = db.execute(_SQL_KPI_WAREHOUSES).fetchone()
+
+    return {
+        "total_skus":         int(sku_row.total_skus)      if sku_row else 0,
+        "total_stock_value":  0.0,
+        "warehouses_count":   int(wh_row.warehouses_count) if wh_row  else 0,
+        "low_stock_count":    int(sku_row.low_stock_count)  if sku_row else 0,
+        "out_of_stock_count": int(sku_row.out_of_stock_count) if sku_row else 0,
+        "turnover_rate":      0.0,
+    }
+
+
+# ============================================================================
+#  §5  GET /inventory/stock-status
+#      Distribución de SKUs por estado (NORMAL / CRITICAL / OUT_OF_STOCK).
+#      Los estados se derivan igual que en §1 (snapshot) para consistencia.
+# ============================================================================
+
+_SQL_STOCK_STATUS = text("""
+    WITH stock_por_sku AS (
+        SELECT
+            inv.sku_id,
+            SUM(GREATEST(inv.physical_stock - inv.reserved_stock, 0)) AS total_available,
+            MAX(inv.critical_threshold)                                AS threshold
+        FROM  inventory  inv
+        INNER JOIN locations loc ON loc.id = inv.location_id
+        WHERE loc.is_active = TRUE
+        GROUP BY inv.sku_id
+    ),
+    classified AS (
+        SELECT
+            CASE
+                WHEN total_available = 0              THEN 'OUT_OF_STOCK'
+                WHEN total_available <= threshold     THEN 'CRITICAL'
+                ELSE                                       'NORMAL'
+            END AS status
+        FROM stock_por_sku
+    ),
+    totales AS (SELECT COUNT(*) AS n FROM classified)
+    SELECT
+        c.status,
+        COUNT(*)                                            AS count,
+        ROUND(100.0 * COUNT(*) / NULLIF(t.n, 0), 2)        AS percentage
+    FROM classified c, totales t
+    GROUP BY c.status, t.n
+    ORDER BY
+        CASE c.status
+            WHEN 'OUT_OF_STOCK' THEN 1
+            WHEN 'CRITICAL'     THEN 2
+            ELSE                     3
+        END
+""")
+
+
+def get_stock_status_summary(db: Session) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    Retorna la distribución de SKUs por estado de stock y el total de SKUs.
+    Los tres posibles estados son NORMAL, CRITICAL y OUT_OF_STOCK.
+    """
+    rows = db.execute(_SQL_STOCK_STATUS).fetchall()
+    data = [_row_to_dict(r) for r in rows]
+    total = sum(int(r["count"]) for r in data)
+    return data, total
+
+
 def get_products_thresholds(
     db:              Session,
     sku_id:          Optional[str],

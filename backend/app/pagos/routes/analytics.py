@@ -5,10 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.pagos.schemas.payment_analytics_schema import (
+    PaymentConciliationResponse,
+    PaymentFailuresResponse,
     PaymentKPIsResponse,
     PaymentTimelinePoint,
     SlaStatusResponse,
 )
+from app.pagos.analytics.payment_metrics import get_conciliation_summary, get_failure_reasons
 from app.pagos.services.payment_analytics_service import get_payment_kpis, get_payment_timeline
 from app.pagos.services.sla_service import get_sla_status
 
@@ -66,6 +69,55 @@ async def get_payments_timeline(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error calculando timeline de pagos: {exc}",
+        )
+
+
+@router.get(
+    "/payments/failures",
+    response_model=PaymentFailuresResponse,
+    summary="Razones de fallo de pagos",
+    description=(
+        "Retorna la tasa de rechazo y el top N de razones de fallo (descripción legible) "
+        "para la ventana de horas indicada. Usa dim_error_codes.descripcion para nombres "
+        "en español. Solo considera transacciones con estado != Aprobado."
+    ),
+)
+async def get_payments_failures(
+    hours: int = Query(default=24, ge=1, le=8760, description="Ventana en horas (1–8760)"),
+    top_n: int = Query(default=10, ge=1, le=50,   description="Máximo de razones a retornar"),
+    db: Session = Depends(get_db),
+) -> PaymentFailuresResponse:
+    try:
+        data = get_failure_reasons(db, hours=hours, top_n=top_n)
+        return PaymentFailuresResponse(**data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculando razones de fallo: {exc}",
+        )
+
+
+@router.get(
+    "/payments/conciliation",
+    response_model=PaymentConciliationResponse,
+    summary="Estado de conciliación de pagos",
+    description=(
+        "Agrupa fact_pagos por estado de conciliación (Aprobado / esperando_revisión / "
+        "discrepancia_*) y retorna conteos y porcentajes. "
+        "Incluye la tasa de aprobación global en la ventana."
+    ),
+)
+async def get_payments_conciliation(
+    hours: int = Query(default=24, ge=1, le=8760, description="Ventana en horas (1–8760)"),
+    db: Session = Depends(get_db),
+) -> PaymentConciliationResponse:
+    try:
+        data = get_conciliation_summary(db, hours=hours)
+        return PaymentConciliationResponse(**data)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculando estado de conciliación: {exc}",
         )
 
 

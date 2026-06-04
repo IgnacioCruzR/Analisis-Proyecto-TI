@@ -194,6 +194,25 @@ export interface PaymentFailure {
   percentage: number
 }
 
+export interface PaymentFailuresResponse {
+  rejection_rate: number
+  total: number
+  failed: number
+  reasons: PaymentFailure[]
+}
+
+export interface ConciliationStatus {
+  status: string
+  count: number
+  percentage: number
+}
+
+export interface PaymentConciliationResponse {
+  statuses: ConciliationStatus[]
+  total: number
+  approval_rate: number
+}
+
 export interface PaymentTimeline {
   date: string
   successful: number

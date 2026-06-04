@@ -24,7 +24,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.inventory_query_schemas import (
+    InventoryKPIsResponse,
     InventorySnapshotResponse,
+    InventoryStockStatusResponse,
     LocationsCatalogResponse,
     LocationType,
     PaginationMeta,
@@ -33,9 +35,11 @@ from app.schemas.inventory_query_schemas import (
 )
 from app.services.inventory_query_service import (
     _now_utc_iso,
+    get_inventory_kpis,
     get_inventory_snapshot,
     get_locations_catalog,
     get_products_thresholds,
+    get_stock_status_summary,
 )
 
 router = APIRouter(
@@ -46,6 +50,75 @@ router = APIRouter(
         500: {"description": "Error interno del servidor"},
     },
 )
+
+
+# ============================================================================
+#  §0  GET /inventory/kpis
+# ============================================================================
+
+@router.get(
+    "/inventory/kpis",
+    response_model=InventoryKPIsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="KPIs globales de inventario",
+    description="""
+Retorna los indicadores clave de inventario agregados para el dashboard de analítica.
+
+- **total_skus**: total de SKUs únicos con stock registrado en ubicaciones activas.
+- **warehouses_count**: número de bodegas (`WAREHOUSE`) activas.
+- **low_stock_count**: SKUs cuyo stock disponible total (físico − reservado) está en o bajo el umbral crítico.
+- **out_of_stock_count**: SKUs sin stock disponible en ninguna ubicación.
+- **total_stock_value**: `0.0` — requiere `unit_price` por producto (pendiente del grupo de inventario).
+- **turnover_rate**: `0.0` — requiere historial de movimientos vía eventos EDA (pendiente).
+""",
+)
+async def get_kpis(db: Session = Depends(get_db)) -> InventoryKPIsResponse:
+    try:
+        kpis = get_inventory_kpis(db)
+        return InventoryKPIsResponse(**kpis, generated_at=_now_utc_iso())
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener los KPIs de inventario: {exc}",
+        )
+
+
+# ============================================================================
+#  §0b GET /inventory/stock-status
+# ============================================================================
+
+@router.get(
+    "/inventory/stock-status",
+    response_model=InventoryStockStatusResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Distribución de SKUs por estado de stock",
+    description="""
+Retorna cuántos SKUs se encuentran en cada estado de stock:
+
+- **NORMAL**: stock disponible por encima del umbral crítico.
+- **CRITICAL**: stock disponible en o bajo el umbral, pero mayor que cero.
+- **OUT_OF_STOCK**: sin unidades disponibles en ninguna ubicación activa.
+
+Los estados se calculan igual que en `/inventory/snapshot` para consistencia.
+""",
+)
+async def get_stock_status(db: Session = Depends(get_db)) -> InventoryStockStatusResponse:
+    try:
+        data, total = get_stock_status_summary(db)
+        return InventoryStockStatusResponse(
+            data=data,
+            total_skus=total,
+            generated_at=_now_utc_iso(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener el resumen de estado de stock: {exc}",
+        )
 
 
 # ============================================================================

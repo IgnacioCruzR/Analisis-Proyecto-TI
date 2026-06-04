@@ -296,6 +296,39 @@ class ProductsThresholdsResponse(BaseModel):
     total_out_of_stock:    int                       = Field(..., description="Cantidad de SKUs completamente sin stock")
     generated_at:          str                       = Field(..., description="Timestamp de generación (ISO 8601 UTC)")
 
+
+# ============================================================================
+#  §4  GET /inventory/kpis
+# ============================================================================
+
+class InventoryKPIsResponse(BaseModel):
+    """KPIs globales de inventario para el dashboard de analítica."""
+    total_skus:         int   = Field(..., description="Total de SKUs únicos con stock registrado")
+    total_stock_value:  float = Field(..., description="Valor monetario total del stock (0.0 — requiere unit_price)")
+    warehouses_count:   int   = Field(..., description="Bodegas (WAREHOUSE) activas")
+    low_stock_count:    int   = Field(..., description="SKUs cuyo stock disponible total está bajo o en el umbral crítico")
+    out_of_stock_count: int   = Field(..., description="SKUs completamente sin stock disponible")
+    turnover_rate:      float = Field(..., description="Tasa de rotación (0.0 — requiere historial de movimientos EDA)")
+    generated_at:       str   = Field(..., description="Timestamp de generación (ISO 8601 UTC)")
+
+
+# ============================================================================
+#  §5  GET /inventory/stock-status
+# ============================================================================
+
+class StockStatusItem(BaseModel):
+    """Distribución de SKUs por estado de stock."""
+    status:     StockStatus = Field(..., description="Estado: NORMAL, CRITICAL o OUT_OF_STOCK")
+    count:      int         = Field(..., description="Cantidad de SKUs en este estado")
+    percentage: float       = Field(..., description="Porcentaje del total de SKUs")
+
+
+class InventoryStockStatusResponse(BaseModel):
+    """Respuesta de GET /inventory/stock-status."""
+    data:        List[StockStatusItem] = Field(..., description="Distribución por estado de stock")
+    total_skus:  int                   = Field(..., description="Total de SKUs considerados")
+    generated_at:str                   = Field(..., description="Timestamp de generación (ISO 8601 UTC)")
+
     model_config = {
         "json_schema_extra": {
             "example": {

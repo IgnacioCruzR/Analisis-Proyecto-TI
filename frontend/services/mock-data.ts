@@ -28,6 +28,8 @@ import type {
   StockStatusSummary,
   LocationsCatalogResponse,
   ProductsThresholdsResponse,
+  PaymentFailuresResponse,
+  PaymentConciliationResponse,
   CRMKPIs,
   CRMTimeline,
   CRMTicketsResponse,
@@ -293,6 +295,29 @@ export const paymentTimeline: PaymentTimeline[] = Array.from(
     };
   },
 );
+
+export const paymentFailures: PaymentFailuresResponse = {
+  rejection_rate: 2.1,
+  total:          45892,
+  failed:         964,
+  reasons: [
+    { reason: "Fondos insuficientes",       count: 434, percentage: 45.0 },
+    { reason: "Tarjeta rechazada",          count: 230, percentage: 23.9 },
+    { reason: "Timeout del proveedor",      count: 169, percentage: 17.5 },
+    { reason: "Error de validación",        count: 131, percentage: 13.6 },
+  ],
+}
+
+export const paymentConciliation: PaymentConciliationResponse = {
+  statuses: [
+    { status: "Aprobado",                    count: 44820, percentage: 97.7 },
+    { status: "esperando_revisión",          count: 660,   percentage: 1.4  },
+    { status: "discrepancia_de_monto",       count: 298,   percentage: 0.6  },
+    { status: "discrepancia_de_transacciones", count: 114, percentage: 0.3  },
+  ],
+  total:         45892,
+  approval_rate: 97.66,
+}
 
 // Logistics Mock Data
 export const logisticsKPIs: LogisticsKPIs = {

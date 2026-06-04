@@ -34,6 +34,55 @@ class PaymentKPIsResponse(BaseModel):
     }}}
 
 
+class FailureReason(BaseModel):
+    reason: str   = Field(..., description="Descripción legible del error (de dim_error_codes.descripcion)")
+    count: int    = Field(..., description="Transacciones con este error en la ventana")
+    percentage: float = Field(..., description="Porcentaje sobre el total de fallidas")
+
+    model_config = {"json_schema_extra": {"example": {"reason": "Fondos insuficientes", "count": 186, "percentage": 45.1}}}
+
+
+class PaymentFailuresResponse(BaseModel):
+    rejection_rate: float            = Field(..., description="(failed / total) * 100")
+    total: int                       = Field(..., description="Total de transacciones en la ventana")
+    failed: int                      = Field(..., description="Transacciones cuyo estado no es Aprobado")
+    reasons: List[FailureReason]     = Field(..., description="Top N razones de fallo ordenadas por frecuencia")
+
+    model_config = {"json_schema_extra": {"example": {
+        "rejection_rate": 2.1,
+        "total": 45892,
+        "failed": 964,
+        "reasons": [
+            {"reason": "Fondos insuficientes", "count": 186, "percentage": 45.1},
+            {"reason": "Tarjeta rechazada",    "count": 98,  "percentage": 23.8},
+        ],
+    }}}
+
+
+class ConciliationStatus(BaseModel):
+    status: str     = Field(..., description="Nombre del estado (Aprobado, esperando_revisión, discrepancia_*)")
+    count: int      = Field(..., description="Transacciones en este estado")
+    percentage: float = Field(..., description="Porcentaje sobre el total")
+
+    model_config = {"json_schema_extra": {"example": {"status": "Aprobado", "count": 44820, "percentage": 97.7}}}
+
+
+class PaymentConciliationResponse(BaseModel):
+    statuses: List[ConciliationStatus] = Field(..., description="Desglose por estado de conciliación")
+    total: int                         = Field(..., description="Total de transacciones en la ventana")
+    approval_rate: float               = Field(..., description="(Aprobado / total) * 100")
+
+    model_config = {"json_schema_extra": {"example": {
+        "statuses": [
+            {"status": "Aprobado",            "count": 44820, "percentage": 97.7},
+            {"status": "esperando_revisión",  "count": 660,   "percentage": 1.4},
+            {"status": "discrepancia_de_monto","count": 412,  "percentage": 0.9},
+        ],
+        "total": 45892,
+        "approval_rate": 97.7,
+    }}}
+
+
 class SlaActiveEvent(BaseModel):
     id: int
     tipo: str = Field(..., description="'downtime' | 'degraded'")
