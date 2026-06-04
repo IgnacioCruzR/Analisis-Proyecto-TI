@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { RoleGate } from '@/components/auth/role-gate'
 import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
 import { ChartCard } from '@/components/dashboard/chart-card'
 import { StatusBadge } from '@/components/dashboard/status-badge'
@@ -50,7 +51,7 @@ function formatAvgVisit(minutes: number | null | undefined): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
-export default function HealthPage() {
+function HealthContent() {
   const { data: dashboard, error: errDash, isLoading: loadDash } = useSWR(
     'salud-dashboard',
     () => fetcher(fetchSaludDashboard),
@@ -82,12 +83,11 @@ export default function HealthPage() {
   const upcomingVisits: SaludTodayVisit[] = schedule?.visits ?? []
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Home Health Services</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Servicios de salud domiciliaria</h1>
           <p className="text-muted-foreground">
-            Domiciliary healthcare operations and patient management (datos desde la API de analítica)
+            Operaciones de atención domiciliaria y gestión de pacientes (datos desde la API de analítica)
           </p>
         </div>
 
@@ -118,32 +118,32 @@ export default function HealthPage() {
           ) : (
             <>
               <KPICard
-                title="Active Patients"
+                title="Pacientes activos"
                 value={dashboard?.active_patients ?? 0}
                 icon={<Heart className="h-5 w-5" />}
               />
               <KPICard
-                title="Today's Visits"
+                title="Visitas de hoy"
                 value={dashboard?.today_visits ?? 0}
                 icon={<Calendar className="h-5 w-5" />}
               />
               <KPICard
-                title="Healthcare Staff"
+                title="Personal de salud"
                 value={dashboard?.healthcare_staff ?? 0}
                 icon={<Users className="h-5 w-5" />}
               />
               <KPICard
-                title="Avg Visit Time"
+                title="Duración promedio"
                 value={formatAvgVisit(dashboard?.avg_visit_time_minutes)}
                 icon={<Clock className="h-5 w-5" />}
               />
               <KPICard
-                title="Coverage Areas"
+                title="Zonas de cobertura"
                 value={dashboard?.coverage_zones ?? 0}
                 icon={<MapPin className="h-5 w-5" />}
               />
               <KPICard
-                title="Satisfaction"
+                title="Satisfacción"
                 value={
                   dashboard?.satisfaction_score != null
                     ? dashboard.satisfaction_score
@@ -156,11 +156,11 @@ export default function HealthPage() {
         </div>
 
         <ChartCard
-          title="Visit Trends"
+          title="Tendencia de visitas"
           description={
             loadTrends && !trends
               ? 'Cargando tendencia desde el warehouse…'
-              : 'Daily home health visits (scheduled vs completed), últimos 14 días'
+              : 'Visitas domiciliarias diarias (programadas vs completadas), últimos 14 días'
           }
         >
           <div className="h-[300px]">
@@ -180,7 +180,7 @@ export default function HealthPage() {
                 <XAxis
                   dataKey="date"
                   tickFormatter={(val) =>
-                    new Date(val + 'T12:00:00').toLocaleDateString('en-US', {
+                    new Date(val + 'T12:00:00').toLocaleDateString('es-CL', {
                       month: 'short',
                       day: 'numeric',
                     })
@@ -202,7 +202,7 @@ export default function HealthPage() {
                   stroke="var(--chart-2)"
                   fill="url(#visitsGradient)"
                   strokeWidth={2}
-                  name="Scheduled"
+                  name="Programadas"
                 />
                 <Area
                   type="monotone"
@@ -210,7 +210,7 @@ export default function HealthPage() {
                   stroke="var(--chart-1)"
                   fill="url(#completedGradient)"
                   strokeWidth={2}
-                  name="Completed"
+                  name="Completadas"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -220,7 +220,7 @@ export default function HealthPage() {
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground">
-              {schedule?.date ? `Today's Schedule (${schedule.date})` : "Today's Schedule"}
+              {schedule?.date ? `Agenda de hoy (${schedule.date})` : 'Agenda de hoy'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -266,6 +266,15 @@ export default function HealthPage() {
           </CardContent>
         </Card>
       </div>
+  )
+}
+
+export default function HealthPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="salud">
+        <HealthContent />
+      </RoleGate>
     </DashboardLayout>
   )
 }

@@ -1,322 +1,177 @@
 'use client'
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
-import { ChartCard, ChartCardSkeleton } from '@/components/dashboard/chart-card'
-import { DataTable, DataTableSkeleton } from '@/components/dashboard/data-table'
-import { StatusBadge, SeverityBadge } from '@/components/dashboard/status-badge'
 import {
-  useGlobalKPIs,
-  useServiceStatuses,
-  useRecentActivities,
-  useCriticalAlerts,
-  useOrderTimeline,
-} from '@/hooks/use-analytics'
-import {
-  ShoppingCart,
-  Truck,
-  DollarSign,
   Bell,
-  RefreshCw,
   Cpu,
+  ShoppingCart,
+  RefreshCw,
+  Activity as ActivityLucide,
+  ChevronRight,
+  Heart,
   AlertTriangle,
   CreditCard,
-  TrendingUp,
-  ArrowRight,
+  Truck,
+  Box,
+  User,
 } from 'lucide-react'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import type { ServiceStatus, Activity, Alert, OrderTimelineResponse } from '@/types/analytics'
 
-export default function OverviewPage() {
-  const { data: kpis, isLoading: kpisLoading } = useGlobalKPIs()
-  const { data: services, isLoading: servicesLoading } = useServiceStatuses()
-  const { data: activities, isLoading: activitiesLoading } = useRecentActivities()
-  const { data: alerts, isLoading: alertsLoading } = useCriticalAlerts()
-  const { data: timelineData, isLoading: timelineLoading } = useOrderTimeline()
+const DOMAINS = [
+  {
+    key: 'orders',
+    label: 'Pedidos',
+    description: 'Seguimiento omnicanal de órdenes y métricas de entrega',
+    href: '/orders',
+    icon: ShoppingCart,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'subscriptions',
+    label: 'Suscripciones',
+    description: 'Renovaciones, retención y ciclo de vida de contratos',
+    href: '/subscriptions',
+    icon: RefreshCw,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'notifications',
+    label: 'Notificaciones',
+    description: 'Entrega multicanal, fallbacks y uptime del servicio',
+    href: '/notifications',
+    icon: Bell,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'iot',
+    label: 'IoT',
+    description: 'Estado de sensores, telemetría y detección de anomalías',
+    href: '/iot',
+    icon: Cpu,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'health',
+    label: 'Salud',
+    description: 'Indicadores de bienestar, historial y alertas médicas',
+    href: '/health',
+    icon: Heart,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'incidents',
+    label: 'Incidentes',
+    description: 'Gestión de alertas, resolución y trazabilidad de fallas',
+    href: '/incidents',
+    icon: AlertTriangle,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'pagos',
+    label: 'Pagos',
+    description: 'Procesamiento seguro, conciliación y métricas financieras',
+    href: '/pagos',
+    icon: CreditCard,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'logistics',
+    label: 'Logística',
+    description: 'Rutas, entregas, optimización de transporte y costos',
+    href: '/logistics',
+    icon: Truck,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'inventory',
+    label: 'Inventario',
+    description: 'Stock disponible, rotación de productos y alertas',
+    href: '/inventory',
+    icon: Box,
+    accent: 'var(--chart-2)',
+  },
+  {
+    key: 'crm',
+    label: 'CRM',
+    description: 'Gestión de clientes, interacciones y métricas de fidelización',
+    href: '/crm',
+    icon: User,
+    accent: 'var(--chart-2)',
+  },
+]
 
-  const timelineRaw = timelineData as OrderTimelineResponse | undefined
-  const timeline = Array.isArray(timelineRaw)
-    ? timelineRaw
-    : timelineRaw?.timeline ?? []
-
+export default function HomePage() {
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Overview</h1>
-            <p className="text-muted-foreground">
-              Real-time operational metrics across all services
+      <div className="space-y-8 pb-8">
+
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-card px-8 py-10">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
+            style={{ background: 'var(--chart-1)', opacity: 0.08 }}
+          />
+          <div className="relative flex flex-col gap-2 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              <ActivityLucide className="h-3.5 w-3.5" />
+              Sistema centralizado de análisis
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Bienvenido al Panel de Control
+            </h1>
+            <p className="text-muted-foreground leading-relaxed">
+              Monitorea en tiempo real el rendimiento de todos los dominios operacionales
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-              Live data
-            </div>
+        </div>
+
+        {/* Domain Cards */}
+        <div>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+            Dominios
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {DOMAINS.map((d) => {
+              const Icon = d.icon
+              return (
+                <Link
+                  key={d.key}
+                  href={d.href}
+                  className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <div
+                    className="absolute inset-x-0 top-0 h-0.5 opacity-60 transition-opacity group-hover:opacity-100"
+                    style={{ background: d.accent }}
+                  />
+                  <div className="flex items-start justify-between">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg"
+                      style={{ background: `${d.accent}18`, color: d.accent }}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                  <div className="mt-4">
+                    <div className="font-semibold text-foreground">{d.label}</div>
+                    <div className="mt-1 text-sm text-muted-foreground leading-snug">
+                      {d.description}
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpisLoading ? (
-            Array.from({ length: 8 }).map((_, i) => <KPICardSkeleton key={i} />)
-          ) : (
-            <>
-              <KPICard
-                title="Total Orders"
-                value={kpis?.totalOrders ?? 0}
-                change={12.5}
-                trend="up"
-                icon={<ShoppingCart className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Delivery Rate"
-                value={kpis?.deliveryRate ?? 0}
-                change={2.1}
-                trend="up"
-                format="percentage"
-                icon={<Truck className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Revenue"
-                value={kpis?.revenue ?? 0}
-                change={8.3}
-                trend="up"
-                format="currency"
-                icon={<DollarSign className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Notification Success"
-                value={kpis?.notificationSuccessRate ?? 0}
-                change={0.5}
-                trend="up"
-                format="percentage"
-                icon={<Bell className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Active Subscriptions"
-                value={kpis?.activeSubscriptions ?? 0}
-                change={5.2}
-                trend="up"
-                icon={<RefreshCw className="h-5 w-5" />}
-              />
-              <KPICard
-                title="IoT Alerts"
-                value={kpis?.iotAlerts ?? 0}
-                change={-15.3}
-                trend="down"
-                icon={<Cpu className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Active Incidents"
-                value={kpis?.incidentCount ?? 0}
-                change={-8.0}
-                trend="down"
-                icon={<AlertTriangle className="h-5 w-5" />}
-              />
-              <KPICard
-                title="Payment Failure Rate"
-                value={kpis?.paymentFailureRate ?? 0}
-                change={-0.2}
-                trend="down"
-                format="percentage"
-                icon={<CreditCard className="h-5 w-5" />}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Orders Timeline Chart */}
-          {timelineLoading ? (
-            <ChartCardSkeleton />
-          ) : (
-            <ChartCard
-              title="Orders Overview"
-              description="Orders and deliveries over the last 30 days"
-              action={
-                <Link href="/orders">
-                  <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
-                    View details
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              }
-            >
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timeline.slice(-14)}>
-                    <defs>
-                      <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="deliveredGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      stroke="var(--muted-foreground)"
-                      fontSize={12}
-                    />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--popover)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '8px',
-                      }}
-                      labelStyle={{ color: 'var(--foreground)' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="order_count"
-                      stroke="var(--chart-2)"
-                      fill="url(#ordersGradient)"
-                      strokeWidth={2}
-                      name="Orders"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="delivered_count"
-                      stroke="var(--chart-1)"
-                      fill="url(#deliveredGradient)"
-                      strokeWidth={2}
-                      name="Delivered"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-          )}
-
-          {/* Service Status */}
-          {servicesLoading ? (
-            <ChartCardSkeleton />
-          ) : (
-            <ChartCard
-              title="Service Status"
-              description="Real-time health of all microservices"
-            >
-              <div className="space-y-3">
-                {services?.map((service: ServiceStatus) => (
-                  <div
-                    key={service.name}
-                    className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <StatusBadge status={service.status} />
-                      <span className="font-medium text-foreground">{service.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-foreground">
-                        {service.uptime.toFixed(2)}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">uptime</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ChartCard>
-          )}
-        </div>
-
-        {/* Bottom Row */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Critical Alerts */}
-          {alertsLoading ? (
-            <DataTableSkeleton rows={3} cols={2} />
-          ) : (
-            <Card className="bg-card border-border lg:col-span-1">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    Critical Alerts
-                  </CardTitle>
-                </div>
-                <Link href="/incidents">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                    View all
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {alerts?.map((alert: Alert) => (
-                  <div
-                    key={alert.id}
-                    className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <SeverityBadge severity={alert.severity} />
-                      <span className="text-xs text-muted-foreground">{alert.timestamp}</span>
-                    </div>
-                    <p className="font-medium text-foreground text-sm">{alert.title}</p>
-                    <p className="text-xs text-muted-foreground">{alert.message}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Activity */}
-          {activitiesLoading ? (
-            <DataTableSkeleton rows={5} cols={3} />
-          ) : (
-            <Card className="bg-card border-border lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activities?.map((activity: Activity) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/30 p-3"
-                    >
-                      <StatusBadge
-                        status={activity.status || 'neutral'}
-                        showDot={true}
-                        label=""
-                        className="mt-0.5 px-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground">{activity.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{activity.timestamp}</p>
-                      </div>
-                      <span className="text-xs font-medium text-muted-foreground capitalize shrink-0">
-                        {activity.type}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
     </DashboardLayout>
   )

@@ -1,19 +1,18 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '')
+/**
+ * Cliente del backend FastAPI para el dominio salud (KPIs desde el warehouse).
+ * Base URL: NEXT_PUBLIC_API_URL (ej. http://127.0.0.1:8000)
+ */
+import { getAccessToken } from '@/lib/keycloak'
 
-async function get<T>(path: string, fallback: T): Promise<T> {
-  if (!API_BASE) return fallback
-  try {
-    const res = await fetch(`${API_BASE}${path}`)
-    if (!res.ok) throw new Error(`${res.status}`)
-    return res.json()
-  } catch {
-    return fallback
-  }
+const DEFAULT_API_BASE = 'http://127.0.0.1:8000'
+
+export function getApiBaseUrl(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL?.trim()
+  if (!raw) return DEFAULT_API_BASE
+  return raw.replace(/\/$/, '')
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export interface SaludDashboard {
+export type SaludDashboard = {
   active_patients: number
   today_visits: number
   healthcare_staff: number
@@ -22,18 +21,18 @@ export interface SaludDashboard {
   satisfaction_score: number | null
 }
 
-export interface SaludVisitTrendPoint {
+export type SaludVisitTrendPoint = {
   date: string
   visits: number
   completed: number
 }
 
-export interface SaludVisitTrends {
+export type SaludVisitTrends = {
   days: number
   points: SaludVisitTrendPoint[]
 }
 
-export interface SaludTodayVisit {
+export type SaludTodayVisit = {
   visita_id: string
   time_display: string
   patient: string
@@ -42,31 +41,36 @@ export interface SaludTodayVisit {
   status: string
 }
 
-export interface SaludTodaySchedule {
+export type SaludTodaySchedule = {
   date: string
   visits: SaludTodayVisit[]
 }
 
-// ── Fetch functions ───────────────────────────────────────────────────────────
+async function fetchJson<T>(path: string): Promise<T> {
+  const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
 
-const EMPTY_DASHBOARD: SaludDashboard = {
-  active_patients: 0,
-  today_visits: 0,
-  healthcare_staff: 0,
-  avg_visit_time_minutes: null,
-  coverage_zones: 0,
-  satisfaction_score: null,
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  const token = await getAccessToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => res.statusText)
+    throw new Error(detail || `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<T>
 }
 
-export function fetchSaludDashboard(): Promise<SaludDashboard> {
-  return get('/kpis/salud/summary', EMPTY_DASHBOARD)
+export function fetchSaludDashboard() {
+  return fetchJson<SaludDashboard>('/kpis/salud/dashboard')
 }
 
-export function fetchSaludVisitTrends(days = 14): Promise<SaludVisitTrends> {
-  return get(`/kpis/salud/visit-trends?days=${days}`, { days, points: [] })
+export function fetchSaludVisitTrends(days = 14) {
+  return fetchJson<SaludVisitTrends>(`/kpis/salud/visit-trends?days=${days}`)
 }
 
-export function fetchSaludTodaySchedule(): Promise<SaludTodaySchedule> {
-  const today = new Date().toISOString().split('T')[0]
-  return get('/kpis/salud/today-schedule', { date: today, visits: [] })
+export function fetchSaludTodaySchedule() {
+  return fetchJson<SaludTodaySchedule>('/kpis/salud/today-schedule')
 }

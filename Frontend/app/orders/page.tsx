@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { RoleGate } from "@/components/auth/role-gate";
 import { KPICard, KPICardSkeleton } from "@/components/dashboard/kpi-card";
 import {
   ChartCard,
@@ -25,7 +26,9 @@ import {
   Check,
   BanknoteArrowUp,
   BanknoteArrowDown,
-  BanknoteX
+  BanknoteX,
+  Calendar,
+  ChevronDown,
 } from "lucide-react";
 import {
   AreaChart,
@@ -42,6 +45,14 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   OrderChannel,
@@ -50,7 +61,8 @@ import type {
   OrderStatusResponse,
   OrderTimelineResponse,
 } from "@/types/analytics";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const COLORS = [
   "var(--chart-1)",
@@ -73,29 +85,72 @@ const statusFormat: Record<string, string> = {
   stock_reserved: "Stock reservado",
   created: "Recien creado",
 };
-export default function OrdersPage() {
-  const { data: kpis, isLoading: kpisLoading } = useOrdersKPIs();
-  const { data: channelsData, isLoading: channelsLoading } = useOrderChannels();
-  const { data: statusesData, isLoading: statusesLoading } = useOrderStatuses();
-  const { data: timelineData, isLoading: timelineLoading } = useOrderTimeline();
+type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
+
+const filterDaysLabel: Record<AllowedDays, string> = {
+  1: "Último día",
+  7: "Últimos 7 días",
+  30: "Últimos 30 días",
+  90: "Últimos 90 días",
+  180: "Últimos 180 días",
+  365: "Últimos 365 días",
+};
+
+function OrdersContent() {
+  const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
+  const { data: kpis, isLoading: kpisLoading } = useOrdersKPIs(selectedDays);
+  const { data: channelsData, isLoading: channelsLoading } = useOrderChannels(selectedDays);
+  const { data: statusesData, isLoading: statusesLoading } = useOrderStatuses(selectedDays);
+  const { data: timelineData, isLoading: timelineLoading } = useOrderTimeline(selectedDays);
 
   const channels = channelsData as OrderChannelsResponse | undefined;
   const statuses = statusesData as OrderStatusResponse | undefined;
   const timeline = timelineData as OrderTimelineResponse | undefined;
-
-  console.log("KPIs:", kpis);
-  console.log("Channels:", channels);
-  console.log("Statuses:", statuses);
-  console.log("Timeline:", timeline);
-
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Análisis de Pedidos
-          </h1>
+          <div className="flex justify-between items-center mr-5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Análisis de Pedidos
+            </h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-background border-border text-foreground hover:bg-muted"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>{filterDaysLabel[selectedDays]}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={() => setSelectedDays(1)}>
+                  Último día
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDays(7)}>
+                  Últimos 7 días
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDays(30)}>
+                  Últimos 30 días
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDays(90)}>
+                  Últimos 90 días
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDays(180)}>
+                  Últimos 180 días
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => setSelectedDays(365)}>
+                  Últimos 365 días
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Custom range</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>{" "}
+          </div>
           <p className="text-muted-foreground">
             Seguimiento de pedidos omnicanal y métricas de rendimiento{" "}
           </p>
@@ -104,7 +159,9 @@ export default function OrdersPage() {
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {kpisLoading ? (
-            Array.from({ length: 10 }).map((_, i) => <KPICardSkeleton key={i} />)
+            Array.from({ length: 10 }).map((_, i) => (
+              <KPICardSkeleton key={i} />
+            ))
           ) : (
             <>
               <KPICard
@@ -115,18 +172,18 @@ export default function OrdersPage() {
               />
               <KPICard
                 title="Cantidad total de pedidos procesados."
-                value={kpis?.total_orders  ?? 0}
+                value={kpis?.total_orders ?? 0}
                 icon={<ShoppingCart className="h-5 w-5" />}
               />
               <KPICard
                 title="Porcentaje de pedidos entregados correctamente."
-                value={((kpis?.delivery_rate ?? 0) * 100)}
+                value={(kpis?.delivery_rate ?? 0) * 100}
                 format="percentage"
                 icon={<Truck className="h-5 w-5" />}
               />
               <KPICard
                 title="Pedidos que cumplieron tiempos SLA."
-                value={((kpis?.sla_compliance ?? 0) * 100)}
+                value={(kpis?.sla_compliance ?? 0) * 100}
                 format="percentage"
                 icon={<Target className="h-5 w-5" />}
               />
@@ -140,21 +197,21 @@ export default function OrdersPage() {
 
               <KPICard
                 title="Tasa de reserva de stock"
-                value={((kpis?.stock_reservation_rate ?? 0) * 100)}
+                value={(kpis?.stock_reservation_rate ?? 0) * 100}
                 format="percentage"
                 icon={<CheckCircle className="h-5 w-5" />}
               />
 
               <KPICard
                 title="Pedidos completados exitosamente de punta a punta."
-                value={((kpis?.fulfillment_rate ?? 0) * 100)}
+                value={(kpis?.fulfillment_rate ?? 0) * 100}
                 format="percentage"
                 icon={<CheckCircle className="h-5 w-5" />}
               />
 
               <KPICard
                 title="Tasa de pagos fallidos"
-                value={((kpis?.payment_failure_rate ?? 0) * 100)}
+                value={(kpis?.payment_failure_rate ?? 0) * 100}
                 format="percentage"
                 icon={<BanknoteX className="h-5 w-5" />}
               />
@@ -167,7 +224,7 @@ export default function OrdersPage() {
 
               <KPICard
                 title="Tasa de pagos exitosos"
-                value={((kpis?.payment_success_rate ?? 0) * 100)}
+                value={(kpis?.payment_success_rate ?? 0) * 100}
                 format="percentage"
                 icon={<BanknoteArrowUp className="h-5 w-5" />}
               />
@@ -363,7 +420,6 @@ export default function OrdersPage() {
                       dataKey="count"
                       nameKey="status"
                     >
-                      
                       {statuses?.statuses?.map(
                         (entry: OrderStatus, index: number) => (
                           <Cell
@@ -430,6 +486,15 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="orders">
+        <OrdersContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

@@ -8,6 +8,16 @@ from .inventory_event_schema import (
     GenericInventoryPayload,
     InventoryEventType,
 )
+from .iot_kpi_schema import (
+    SensorKPIs,
+    SensorStatus,
+    SensorsStatusResponse,
+    SensorsByTypeResponse,
+    SensorEvent,
+    EventsResponse,
+    IoTTimelineResponse,
+    IoTEventType,
+)
 
 __all__ = [
     "EventCreate",
@@ -24,4 +34,12 @@ __all__ = [
     "CriticalAlertPayload",
     "GenericInventoryPayload",
     "InventoryEventType",
+    "SensorKPIs",
+    "SensorStatus",
+    "SensorsStatusResponse",
+    "SensorsByTypeResponse",
+    "SensorEvent",
+    "EventsResponse",
+    "IoTTimelineResponse",
+    "IoTEventType",
 ]

@@ -8,6 +8,8 @@ from .fact_ticket_articulos import FactTicketArticulo
 from .fact_sla_violaciones import FactSlaViolacion
 from .fact_inventory_movements import FactInventoryMovement
 from .fact_inventory_alerts import FactInventoryAlert
+from .fact_iot import FactIoT
+from .fact_notifications import FactNotifications
 
 # Healthcare System DWH Models
 try:
@@ -54,6 +56,8 @@ __all__ = [
     "DimPacientes",
     "FactVisitas",
     "FactAlertas",
+    "FactIoT",
+    "FactNotifications",
     "FactFichasClinicas",
     "AggVisitasDiarias",
     "AggAlertas",

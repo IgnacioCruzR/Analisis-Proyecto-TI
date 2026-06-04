@@ -19,7 +19,8 @@ from app.etl.processors.crm_processor import process_crm_event
 from app.etl.processors.inventory_processor import process_inventory_event
 from app.pagos.services.payment_service import register_payment_attempt, confirm_payment
 from app.pagos.models.fact_payments_events import FactPaymentsEvent
-
+from app.etl.processors.iot_processor import process_iot_event
+from app.etl.processors.notification_proccessor import process_notification_event
 
 router = APIRouter(
     prefix="/events",
@@ -42,6 +43,8 @@ _ETL_PROCESSORS = {
     "incidents": process_incident_event,
     "crm": process_crm_event,
     "inventory": process_inventory_event,
+    "iot": process_iot_event,
+    "notifications": process_notification_event,
 }
 
 

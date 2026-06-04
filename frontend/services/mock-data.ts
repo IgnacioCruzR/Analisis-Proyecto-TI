@@ -22,6 +22,9 @@ import type {
   Alert,
   RetentionRates,
   SubscriptionTimelineResponse,
+  NotificationTimelinePoint,
+  NotificationStatusResponse,
+  NotificationTimelineResponse,
   InventoryKPIs,
   WarehouseCapacity,
   LowStockItem,
@@ -111,20 +114,73 @@ export const retentionRates: RetentionRates = {
   },
 };
 // Notifications Mock Data
+
+
+// Notifications Mock Data
 export const notificationKPIs: NotificationKPIs = {
-  totalSent: 892450,
-  deliveryRate: 98.7,
-  failureRate: 1.3,
-  uptime: 99.95,
-  avgLatency: 145,
-};
+  total_notifications: 892450,
+  delivered_notifications: 881050,
+  failed_notifications: 11600,
+  fallback_notifications: 24500,
+  delivery_rate: 98.7,
+  failure_rate: 1.3,
+  backpressure_ratio: 2.7,
+  avg_attempts: 1.3,
+}
 
 export const notificationChannels: NotificationChannel[] = [
-  { channel: "Email", sent: 425000, delivered: 419750, failed: 5250 },
-  { channel: "SMS", sent: 287000, delivered: 283290, failed: 3710 },
-  { channel: "Push", sent: 156000, delivered: 154440, failed: 1560 },
-  { channel: "WhatsApp", sent: 24450, delivered: 24206, failed: 244 },
-];
+  { canal: 'email', total: 425000, delivered: 419750, failed: 5250,  fallbacks: 8500,  avg_attempts: 1.2, delivery_rate: 98.8, failure_rate: 1.2 },
+  { canal: 'sms',   total: 287000, delivered: 283290, failed: 3710,  fallbacks: 12000, avg_attempts: 1.4, delivery_rate: 98.7, failure_rate: 1.3 },
+  { canal: 'push',  total: 180450, delivered: 178010, failed: 2440,  fallbacks: 4000,  avg_attempts: 1.1, delivery_rate: 98.6, failure_rate: 1.4 },
+]
+
+export const notificationStatus: NotificationStatusResponse = {
+  total_notifications: 892450,
+  statuses: [
+    { estado: 'entregado', count: 881050, percentage: 98.7 },
+    { estado: 'enviado',   count:   7420, percentage:  0.8 },
+    { estado: 'fallido',   count:   3980, percentage:  0.5 },
+  ],
+}
+
+export const notificationTimeline: NotificationTimelineResponse = {
+  start_date: '2026-05-03',
+  end_date:   '2026-06-02',
+  total_notifications: 892450,
+  timeline: [
+    { date: '2026-05-03', total: 28500, delivered: 28150, failed: 350, fallbacks: 620 },
+    { date: '2026-05-04', total: 31200, delivered: 30820, failed: 380, fallbacks: 710 },
+    { date: '2026-05-05', total: 29800, delivered: 29430, failed: 370, fallbacks: 680 },
+    { date: '2026-05-06', total: 33400, delivered: 33010, failed: 390, fallbacks: 750 },
+    { date: '2026-05-07', total: 30100, delivered: 29740, failed: 360, fallbacks: 690 },
+    { date: '2026-05-08', total: 27600, delivered: 27260, failed: 340, fallbacks: 600 },
+    { date: '2026-05-09', total: 25900, delivered: 25570, failed: 330, fallbacks: 560 },
+    { date: '2026-05-10', total: 32100, delivered: 31710, failed: 390, fallbacks: 730 },
+    { date: '2026-05-11', total: 34500, delivered: 34080, failed: 420, fallbacks: 790 },
+    { date: '2026-05-12', total: 31800, delivered: 31410, failed: 390, fallbacks: 720 },
+    { date: '2026-05-13', total: 29200, delivered: 28840, failed: 360, fallbacks: 650 },
+    { date: '2026-05-14', total: 30700, delivered: 30320, failed: 380, fallbacks: 700 },
+    { date: '2026-05-15', total: 28400, delivered: 28050, failed: 350, fallbacks: 630 },
+    { date: '2026-05-16', total: 26800, delivered: 26470, failed: 330, fallbacks: 590 },
+    { date: '2026-05-17', total: 33600, delivered: 33190, failed: 410, fallbacks: 760 },
+    { date: '2026-05-18', total: 35200, delivered: 34760, failed: 440, fallbacks: 810 },
+    { date: '2026-05-19', total: 32400, delivered: 32000, failed: 400, fallbacks: 730 },
+    { date: '2026-05-20', total: 30900, delivered: 30520, failed: 380, fallbacks: 700 },
+    { date: '2026-05-21', total: 29300, delivered: 28940, failed: 360, fallbacks: 660 },
+    { date: '2026-05-22', total: 27700, delivered: 27370, failed: 330, fallbacks: 610 },
+    { date: '2026-05-23', total: 26100, delivered: 25780, failed: 320, fallbacks: 570 },
+    { date: '2026-05-24', total: 34800, delivered: 34370, failed: 430, fallbacks: 790 },
+    { date: '2026-05-25', total: 36100, delivered: 35640, failed: 460, fallbacks: 830 },
+    { date: '2026-05-26', total: 33500, delivered: 33080, failed: 420, fallbacks: 760 },
+    { date: '2026-05-27', total: 31200, delivered: 30820, failed: 380, fallbacks: 710 },
+    { date: '2026-05-28', total: 29600, delivered: 29230, failed: 370, fallbacks: 670 },
+    { date: '2026-05-29', total: 28000, delivered: 27660, failed: 340, fallbacks: 620 },
+    { date: '2026-05-30', total: 26500, delivered: 26170, failed: 330, fallbacks: 580 },
+    { date: '2026-05-31', total: 35400, delivered: 34960, failed: 440, fallbacks: 800 },
+    { date: '2026-06-01', total: 37200, delivered: 36720, failed: 480, fallbacks: 860 },
+  ],
+}
+
 
 // IoT Mock Data
 export const iotKPIs: IoTKPIs = {

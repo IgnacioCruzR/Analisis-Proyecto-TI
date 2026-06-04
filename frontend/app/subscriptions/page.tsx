@@ -52,9 +52,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { RoleGate } from "@/components/auth/role-gate";
 
-export default function SubscriptionsPage() {
-  const [selectedDays, setSelectedDays] = useState<AllowedDays>(1);
+function SubscriptionContent() {
+  const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
   type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
   const { data: kpis, isLoading: kpisLoading } = useSubscriptionKPIs(selectedDays);
   const { data: timeline, isLoading: timelineLoading } =
@@ -71,11 +72,8 @@ export default function SubscriptionsPage() {
     180: "Últimos 180 días",
     365: "Últimos 365 días",
   };
-  console.log("Subscription KPIs:", kpis);
-  console.log("Subscription Timeline:", timeline);
-  console.log("Retention Rates:", retentionRates);
+
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Page Header */}
         <div>
@@ -131,7 +129,7 @@ export default function SubscriptionsPage() {
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {kpisLoading ? (
-            Array.from({ length: 6 }).map((_, i) => <KPICardSkeleton key={i} />)
+            Array.from({ length: 10 }).map((_, i) => <KPICardSkeleton key={i} />)
           ) : (
             <>
               <KPICard
@@ -229,19 +227,19 @@ export default function SubscriptionsPage() {
                   <Bar
                     dataKey="renewals"
                     fill="var(--chart-1)"
-                    name="Renewals"
+                    name="Renovaciones"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="new_subscriptions"
                     fill="var(--chart-2)"
-                    name="New"
+                    name="Nuevas Suscripciones"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="cancellations"
                     fill="var(--chart-5)"
-                    name="Cancellations"
+                    name="Cancelaciones"
                     radius={[4, 4, 0, 0]}
                   />
                 </ComposedChart>
@@ -312,6 +310,15 @@ export default function SubscriptionsPage() {
    
         </div>
       </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <DashboardLayout>
+      <RoleGate domain="subscriptions">
+        <SubscriptionContent />
+      </RoleGate>
     </DashboardLayout>
   );
 }

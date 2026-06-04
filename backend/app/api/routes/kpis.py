@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
+from app.auth import require_any_role
 from app.db import get_db
 from app.schemas import KPIResponse, SubscriptionSummary
 from app.schemas.orders_analytics_schema import (
     KPISResponse, ChannelsResponse, StatusResponse, TimelineResponse,
-    ChannelMetric, StatusMetric
+    ChannelMetric as OrderChannelMetric, StatusMetric as OrderStatusMetric,
+
 )
 from app.schemas.subscription_analytics_schema import (
     SubscriptionTimelineResponse, SubscriptionTimelinePoint
@@ -48,6 +50,24 @@ from app.schemas.incidents_kpi_schema import (
     IncidentTimelinePoint,
     IncidentRow,
 )
+from app.services.iot_analytics_service import (
+    get_all_iot_kpis,
+    get_sensors_status,
+    get_sensors_by_type,
+    get_iot_events,
+    get_iot_timeline,
+)
+from app.schemas.iot_kpi_schema import (
+    SensorKPIs,
+    SensorsStatusResponse,
+    SensorStatus,
+    SensorsByTypeResponse,
+    SensorTypeMetric,
+    EventsResponse,
+    SensorEvent,
+    IoTTimelineResponse,
+    TimelinePoint,
+)
 from app.services.overview_analytics_service import (
     get_critical_alerts,
     get_recent_activities,
@@ -74,18 +94,43 @@ from app.schemas.overview_kpi_schema import (
     ServiceStatusRow,
 )
 
+from app.analytics.notifications_kpis import (
+    get_notifications_kpis,
+    get_notifications_by_channel,
+    get_notifications_by_status,
+    get_notifications_timeline,
+)
+from app.schemas.notifications_kpi_schema import (
+    NotificationKPIs,
+    ChannelsResponse as NotificationChannelsResponse,
+    ChannelMetric as NotificationChannelMetric,
+    StatusResponse as NotificationStatusResponse,
+    StatusMetric as NotificationStatusMetric,
+    NotificationTimelineResponse,
+    NotificationTimelinePoint,
+)
+
+SUBS_ROLES = ["admin", "analista", "subscriptions"]
+ORDERS_ROLES = ["admin", "analista", "orders"]
+SALUD_ROLES = ["admin", "analista", "salud"]
+INCIDENTS_ROLES = ["admin", "analista", "incidents"]
+OVERVIEW_ROLES = ["admin", "analista"]
+
 
 router = APIRouter(
     prefix="/kpis",
     tags=["analytics"],
     responses={
-        500: {"description": "Internal server error"}
-    }
+        401: {"description": "Falta token Bearer o token invalido"},
+        403: {"description": "El usuario no tiene rol suficiente"},
+        500: {"description": "Internal server error"},
+    },
 )
 
 
 @router.get(
     "/subscriptions/renewal-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de renovación de suscripciones",
     description="Retorna el porcentaje de suscripciones renovadas (renewed=true)"
@@ -108,6 +153,7 @@ async def get_renewal_rate_endpoint(
 
 @router.get(
     "/subscriptions/error-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de error de facturación",
     description="Retorna el porcentaje de suscripciones con errores de facturación (billing_success=false)"
@@ -130,6 +176,7 @@ async def get_error_rate_endpoint(
 
 @router.get(
     "/subscriptions/auto-service-rate",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=KPIResponse,
     summary="Obtener tasa de auto-servicio",
     description="Retorna el porcentaje de suscripciones con auto-servicio habilitado (auto_service=true)"
@@ -152,6 +199,7 @@ async def get_auto_service_rate_endpoint(
 
 @router.get(
     "/subscriptions/summary",
+    dependencies=[Depends(require_any_role(SUBS_ROLES))],
     response_model=SubscriptionSummary,
     summary="Obtener resumen de KPIs de suscripciones",
     description="Retorna todos los KPIs de suscripciones. Puede filtrar por período de días"
@@ -268,13 +316,20 @@ async def get_subscriptions_retention(db: Session = Depends(get_db)):
 
 @router.get(
     "/orders/kpis",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=KPISResponse,
     summary="KPIs consolidados de órdenes",
-    description="Retorna todos los KPIs principales del dominio Orders"
+    description="Retorna todos los KPIs principales del dominio Orders. Puede filtrar por período de días"
 )
-async def get_orders_kpis(db: Session = Depends(get_db)) -> KPISResponse:
+async def get_orders_kpis(days: int = 30, db: Session = Depends(get_db)) -> KPISResponse:
     try:
-        kpis = get_all_kpis(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        kpis = get_all_kpis(db, days)
         
         return KPISResponse(
             total_orders=kpis["total_orders"],
@@ -298,13 +353,20 @@ async def get_orders_kpis(db: Session = Depends(get_db)) -> KPISResponse:
 
 @router.get(
     "/orders/channels",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=ChannelsResponse,
     summary="Distribución de órdenes por canal",
-    description="Obtiene distribución de órdenes por canal de venta (web, app, call_center, store)"
+    description="Obtiene distribución de órdenes por canal de venta (web, app, call_center, store). Puede filtrar por período de días"
 )
-async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsResponse:
+async def get_orders_by_channels(days: int = 30, db: Session = Depends(get_db)) -> ChannelsResponse:
     try:
-        total = get_total_orders(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        total = get_total_orders(db, days)
         
         if total == 0:
             raise HTTPException(
@@ -312,16 +374,18 @@ async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsRespo
                 detail="No orders found in database"
             )
         
-        channels_data = get_orders_by_channel(db)
+        channels_data = get_orders_by_channel(db, days)
         
         channels_list = []
         for channel, count, revenue in channels_data:
+            if channel is None:      # ignorar filas sin canal
+                continue
             percentage = (count / total * 100) if total > 0 else 0
             channels_list.append(
-                ChannelMetric(
-                    channel=channel,
-                    order_count=count,
-                    revenue=round(revenue, 2),
+                OrderChannelMetric(
+                    channel=channel or "unknown",
+                    order_count=count or 0,
+                    revenue=round(float(revenue) if revenue else 0.0, 2),
                     percentage_of_total=round(percentage, 2)
                 )
             )
@@ -344,13 +408,20 @@ async def get_orders_by_channels(db: Session = Depends(get_db)) -> ChannelsRespo
 
 @router.get(
     "/orders/status",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=StatusResponse,
     summary="Distribución de órdenes por estado",
-    description="Obtiene distribución de órdenes por estado del ciclo de vida"
+    description="Obtiene distribución de órdenes por estado del ciclo de vida. Puede filtrar por período de días"
 )
-async def get_orders_by_statuses(db: Session = Depends(get_db)) -> StatusResponse:
+async def get_orders_by_statuses(days: int = 30, db: Session = Depends(get_db)) -> StatusResponse:
     try:
-        total = get_total_orders(db)
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        total = get_total_orders(db, days)
         
         if total == 0:
             raise HTTPException(
@@ -358,13 +429,13 @@ async def get_orders_by_statuses(db: Session = Depends(get_db)) -> StatusRespons
                 detail="No orders found in database"
             )
         
-        status_data = get_orders_by_status(db)
+        status_data = get_orders_by_status(db, days)
         
         statuses_list = []
         for status_name, count in status_data:
             percentage = (count / total * 100) if total > 0 else 0
             statuses_list.append(
-                StatusMetric(
+                OrderStatusMetric(
                     status=status_name,
                     count=count,
                     percentage_of_total=round(percentage, 2)
@@ -389,6 +460,7 @@ async def get_orders_by_statuses(db: Session = Depends(get_db)) -> StatusRespons
 
 @router.get(
     "/orders/timeline",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     response_model=TimelineResponse,
     summary="Línea de tiempo de órdenes",
     description="Obtiene línea de tiempo de órdenes grouped por fecha (últimos N días)"
@@ -442,6 +514,7 @@ async def get_orders_timeline(days: int = 30, db: Session = Depends(get_db)) -> 
 
 @router.get(
     "/orders/health",
+    dependencies=[Depends(require_any_role(ORDERS_ROLES))],
     summary="Health check de analítica de órdenes",
     description="Verifica disponibilidad del servicio de analítica de órdenes"
 )
@@ -466,6 +539,7 @@ async def orders_health_check(db: Session = Depends(get_db)):
 
 @router.get(
     "/salud/dashboard",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludDashboardSummary,
     summary="KPIs agregados salud",
     description="Métricas desde dim_pacientes, dim_profesionales, dim_zonas y fact_visitas",
@@ -483,6 +557,7 @@ async def get_salud_dashboard(db: Session = Depends(get_db)) -> SaludDashboardSu
 
 @router.get(
     "/salud/visit-trends",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludVisitTrendsResponse,
     summary="Tendencia diaria de visitas",
     description="Conteo por fecha_programada: visitas totales y completadas (últimos N días)",
@@ -511,6 +586,7 @@ async def get_salud_visit_trends_endpoint(
 
 @router.get(
     "/salud/today-schedule",
+    dependencies=[Depends(require_any_role(SALUD_ROLES))],
     response_model=SaludTodayScheduleResponse,
     summary="Agenda del día",
     description="Visitas con fecha_programada = hoy, con paciente y profesional desde dimensiones",
@@ -536,6 +612,7 @@ async def get_salud_today_schedule_endpoint(
 
 @router.get(
     "/incidents/kpis",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=IncidentKPIsResponse,
     summary="KPIs de gestión de incidentes",
     description="Métricas agregadas desde fact_incidents",
@@ -555,6 +632,7 @@ async def get_incidents_kpis_endpoint(
 
 @router.get(
     "/incidents/timeline",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentTimelinePoint],
     summary="Línea de tiempo de incidentes",
     description="Volumen diario: abiertos, resueltos y críticos (últimos N días)",
@@ -582,6 +660,7 @@ async def get_incidents_timeline_endpoint(
 
 @router.get(
     "/incidents/list",
+    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentRow],
     summary="Lista de incidentes",
     description="Incidentes recientes desde el warehouse, ordenados por última actualización",
@@ -614,6 +693,7 @@ async def get_incidents_list_endpoint(
 
 @router.get(
     "/overview/kpis",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=GlobalKPIsResponse,
     summary="KPIs globales (overview)",
     description="Agrega métricas desde fact_orders, fact_incidents y fact_subscriptions",
@@ -632,6 +712,7 @@ async def get_overview_kpis_endpoint(
 
 @router.get(
     "/overview/services",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[ServiceStatusRow],
     summary="Estado de servicios",
     description="Estado derivado de incidentes activos por keywords del título",
@@ -651,6 +732,7 @@ async def get_overview_services_endpoint(
 
 @router.get(
     "/overview/activities",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[ActivityRow],
     summary="Actividad reciente",
     description="Últimos eventos cross-domain desde raw_events",
@@ -678,6 +760,7 @@ async def get_overview_activities_endpoint(
 
 @router.get(
     "/overview/alerts",
+    dependencies=[Depends(require_any_role(OVERVIEW_ROLES))],
     response_model=list[AlertRow],
     summary="Alertas críticas",
     description="Incidentes activos con severidad critical/high",
@@ -702,6 +785,10 @@ async def get_overview_alerts_endpoint(
             detail=f"Error alertas overview: {str(e)}",
         )
 
+
+# ================================================================
+# CRM — KPIs desde warehouse CRM
+# ================================================================
 
 @router.get(
     "/crm/kpis",
@@ -787,3 +874,385 @@ async def get_crm_sla_endpoint(db: Session = Depends(get_db)) -> CRMSLASummary:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error SLA CRM: {str(e)}",
         )
+
+
+# ================================================================
+# IoT — KPIs desde fact_iot y raw_events
+# ================================================================
+
+@router.get(
+    "/iot/kpis",
+    response_model=SensorKPIs,
+    summary="KPIs consolidados de sensores IoT",
+    description="Retorna todos los KPIs principales. Algunos son real-time (siempre actual), otros pueden filtrarse por días"
+)
+async def get_iot_kpis_endpoint(
+    days: int = None,
+    db: Session = Depends(get_db)
+) -> SensorKPIs:
+    try:
+        if days is not None and (days < 1 or days > 365):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        kpis = get_all_iot_kpis(db, days)
+        return SensorKPIs(
+            total_sensors=kpis["total_sensors"],
+            online_sensors=kpis["online_sensors"],
+            offline_sensors=kpis["offline_sensors"],
+            availability_rate=kpis["availability_rate"],
+            avg_battery_level=kpis["avg_battery_level"],
+            low_battery_count=kpis["low_battery_count"],
+            data_validity_rate=kpis["data_validity_rate"],
+            anomalies_detected=kpis["anomalies_detected"],
+            avg_processing_latency_ms=kpis["avg_processing_latency_ms"],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating IoT KPIs: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/status",
+    response_model=SensorsStatusResponse,
+    summary="Estado actual de sensores",
+    description="Obtiene estado actual de todos los sensores IoT (online, battery, última lectura, etc). El parámetro days es opcional e informativo"
+)
+async def get_iot_sensors_status(
+    days: int = None,
+    db: Session = Depends(get_db)
+) -> SensorsStatusResponse:
+    try:
+        if days is not None and (days < 1 or days > 365):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        status_data = get_sensors_status(db)
+        sensors_list = [
+            SensorStatus(
+                sensor_id=sensor["sensor_id"],
+                asset_id=sensor["asset_id"],
+                sensor_type=sensor["sensor_type"],
+                is_online=sensor["is_online"],
+                battery_level=sensor["battery_level"],
+                last_reading_at=sensor["last_reading_at"],
+                location=sensor["location"],
+                has_anomaly=sensor["has_anomaly"],
+                low_battery_alert=sensor["low_battery_alert"],
+            )
+            for sensor in status_data
+        ]
+        online_count = sum(1 for s in sensors_list if s.is_online)
+        offline_count = sum(1 for s in sensors_list if not s.is_online)
+        return SensorsStatusResponse(
+            total_sensors=len(sensors_list),
+            online_count=online_count,
+            offline_count=offline_count,
+            sensors=sensors_list
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting sensors status: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/by-type",
+    response_model=SensorsByTypeResponse,
+    summary="Distribución de sensores por tipo",
+    description="Obtiene distribución y estado actual de sensores agrupados por tipo. El parámetro days es opcional e informativo"
+)
+async def get_iot_sensors_by_type(
+    days: int = None,
+    db: Session = Depends(get_db)
+) -> SensorsByTypeResponse:
+    try:
+        if days is not None and (days < 1 or days > 365):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        types_data = get_sensors_by_type(db)
+        
+        types_list = [
+            SensorTypeMetric(
+                sensor_type=sensor_type["sensor_type"],
+                count=sensor_type["count"],
+                online_count=sensor_type["online_count"],
+                offline_count=sensor_type["offline_count"],
+                avg_battery=sensor_type["avg_battery"],
+                anomaly_count=sensor_type["anomaly_count"],
+            )
+            for sensor_type in types_data
+        ]
+        
+        total_sensors = sum(t.count for t in types_list)
+        
+        return SensorsByTypeResponse(
+            total_sensors=total_sensors,
+            sensor_types=types_list
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting sensors by type: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/events",
+    response_model=EventsResponse,
+    summary="Eventos recientes de IoT",
+    description="Obtiene eventos/alertas recientes desde raw_events (sensor_offline, low_battery, anomaly_detected, etc)"
+)
+async def get_iot_events_endpoint(
+    days: int = 30,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+) -> EventsResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        if limit < 1 or limit > 200:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Limit must be between 1 and 200"
+            )
+        
+        events_data = get_iot_events(db, days, limit)
+        
+        events_list = [
+            SensorEvent(
+                event_id=event["event_id"],
+                sensor_id=event["sensor_id"],
+                event_type=event["event_type"],
+                timestamp=event["timestamp"],
+                severity=event["severity"],
+                message=event["message"],
+                data=event["data"],
+            )
+            for event in events_data
+        ]
+        
+        critical_count = sum(1 for e in events_list if e.severity == "critical")
+        warning_count = sum(1 for e in events_list if e.severity == "warning")
+        info_count = sum(1 for e in events_list if e.severity == "info")
+        
+        return EventsResponse(
+            total_events=len(events_list),
+            critical_count=critical_count,
+            warning_count=warning_count,
+            info_count=info_count,
+            events=events_list
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting IoT events: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/timeline",
+    response_model=IoTTimelineResponse,
+    summary="Línea de tiempo de IoT",
+    description="Obtiene timeline de actividad IoT agrupada por fecha (últimos N días)"
+)
+async def get_iot_timeline_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> IoTTimelineResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Days must be between 1 and 365"
+            )
+        
+        timeline_data = get_iot_timeline(db, days)
+        
+        if not timeline_data:
+            # Devolver respuesta válida incluso si no hay datos
+            start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+            end_date = datetime.utcnow().date().isoformat()
+            
+            return IoTTimelineResponse(
+                start_date=start_date,
+                end_date=end_date,
+                total_events=0,
+                timeline=[]
+            )
+        
+        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+        end_date = datetime.utcnow().date().isoformat()
+        total_events = sum(point["events_count"] for point in timeline_data)
+        
+        timeline_points = [
+            TimelinePoint(
+                date=point["date"],
+                events_count=point["events_count"],
+                sensors_online=point["sensors_online"],
+                sensors_offline=point["sensors_offline"],
+                avg_battery=point["avg_battery"],
+                anomalies=point["anomalies"],
+            )
+            for point in timeline_data
+        ]
+        
+        return IoTTimelineResponse(
+            start_date=start_date,
+            end_date=end_date,
+            total_events=total_events,
+            timeline=timeline_points
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error calculating IoT timeline: {str(e)}"
+        )
+
+
+@router.get(
+    "/iot/health",
+    summary="Health check de analítica IoT",
+    description="Verifica disponibilidad del servicio de analítica IoT"
+)
+async def iot_health_check(db: Session = Depends(get_db)):
+    try:
+        kpis = get_all_iot_kpis(db)
+        return {
+            "status": "healthy",
+            "total_sensors": kpis["total_sensors"],
+            "online_sensors": kpis["online_sensors"],
+            "availability_rate": kpis["availability_rate"]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Health check failed: {str(e)}"
+        )
+# ================================================================
+# NOTIFICATIONS — KPIs desde fact_notifications
+# ================================================================
+
+@router.get(
+    "/notifications/kpis",
+    response_model=NotificationKPIs,
+    summary="KPIs consolidados de notificaciones",
+    description="Tasa de fallos, uptime del servicio y backpressure ratio"
+)
+async def get_notifications_kpis_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> NotificationKPIs:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+        return NotificationKPIs(**get_notifications_kpis(db, days))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error KPIs notificaciones: {str(e)}")
+
+
+@router.get(
+    "/notifications/channels",
+    response_model=NotificationChannelsResponse,
+    summary="Métricas por canal",
+    description="Tasa de entrega y fallos desglosada por canal (sms, email, push)"
+)
+
+async def get_notifications_channels_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> NotificationChannelsResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+        channels = get_notifications_by_channel(db, days)
+        total = sum(c["total"] for c in channels)
+        return NotificationChannelsResponse(
+            total_notifications=total,
+            channels=[NotificationChannelMetric(**c) for c in channels]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error canales notificaciones: {str(e)}")
+
+
+@router.get(
+    "/notifications/status",
+    response_model=NotificationStatusResponse,
+    summary="Distribución por estado",
+    description="Conteo de notificaciones en estado enviado, entregado y fallido"
+)
+async def get_notifications_status_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> NotificationStatusResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+        statuses = get_notifications_by_status(db, days)
+        total = sum(s["count"] for s in statuses)
+        return NotificationStatusResponse(
+            total_notifications=total,
+            statuses=[NotificationStatusMetric(**s) for s in statuses]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error estados notificaciones: {str(e)}")
+
+
+@router.get(
+    "/notifications/timeline",
+    response_model=NotificationTimelineResponse,
+    summary="Línea de tiempo de notificaciones",
+    description="Volumen diario de notificaciones enviadas, entregadas y fallidas"
+)
+async def get_notifications_timeline_endpoint(
+    days: int = 30,
+    db: Session = Depends(get_db)
+) -> NotificationTimelineResponse:
+    try:
+        if days < 1 or days > 365:
+            raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+        timeline = get_notifications_timeline(db, days)
+        total = sum(p["total"] for p in timeline)
+        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
+        end_date = datetime.utcnow().date().isoformat()
+        return NotificationTimelineResponse(
+            start_date=start_date,
+            end_date=end_date,
+            total_notifications=total,
+            timeline=[NotificationTimelinePoint(**p) for p in timeline]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error timeline notificaciones: {str(e)}")
