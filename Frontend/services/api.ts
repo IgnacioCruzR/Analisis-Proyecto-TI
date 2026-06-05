@@ -1,6 +1,6 @@
 // API Service - Using mock data for now, ready to connect to real endpoints
-import * as mockData from './mock-data'
-import { getAccessToken } from '@/lib/keycloak'
+import * as mockData from "./mock-data";
+import { getAccessToken } from "@/lib/keycloak";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(
   /\/+$/,
@@ -16,34 +16,34 @@ async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
+    "Content-Type": "application/json",
+  };
 
-  const token = await getAccessToken()
+  const token = await getAccessToken();
   if (token) {
-    headers.Authorization = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`;
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+    const response = await fetch(`${API_BASE_URL}${path}`, { headers });
     if (!response.ok) {
       // 401 (sin token) y 403 (sin rol) son resultados legitimos del guard de
       // backend. No son "errores" desde la perspectiva del usuario, son falta
       // de permiso. No spameamos warn ni mostramos mock data porque ocultaria
       // el problema real al developer.
       if (response.status === 401 || response.status === 403) {
-        console.info(`[api] ${response.status} ${path} (sin permiso)`)
+        console.info(`[api] ${response.status} ${path} (sin permiso)`);
       } else {
-        console.warn(`[api] Falla ${response.status} en ${path}, usando mock`)
+        console.warn(`[api] Falla ${response.status} en ${path}, usando mock`);
       }
-      return fallback
+      return fallback;
     }
-    return response.json()
+    return response.json();
   } catch (err) {
     // Errores de red (backend caido, CORS, etc.). Caemos a mock para no
     // romper la UI cuando se trabaja offline / sin backend.
-    console.warn(`[api] Network error en ${path}, usando mock:`, err)
-    return fallback
+    console.warn(`[api] Network error en ${path}, usando mock:`, err);
+    return fallback;
   }
 }
 
@@ -172,14 +172,20 @@ export const crmAPI = {
 
 // Inventory API
 export const inventoryAPI = {
-  getKPIs: () =>
-    fetchAPI("/inventory/kpis", mockData.inventoryKPIs),
+  getKPIs: () => fetchAPI("/inventory/kpis", mockData.inventoryKPIs),
   getStockStatus: () =>
-    fetchAPI("/inventory/stock-status", mockData.stockStatusSummary),
+    fetchAPI("/inventory/stock-status", mockData.stockStatusSummary).then(
+      (data: any) => data?.data ?? data,
+    ),
   getWarehouseCapacity: () =>
-    fetchAPI("/inventory/snapshot", mockData.warehouseCapacity),
+    fetchAPI("/inventory/snapshot", mockData.warehouseCapacity).then(
+      (data: any) => data?.data ?? data,
+    ),
   getLowStockItems: () =>
-    fetchAPI("/products/thresholds?below_threshold=true", mockData.lowStockItems),
+    fetchAPI(
+      "/products/thresholds?below_threshold=true",
+      mockData.lowStockItems,
+    ),
   getLocationsCatalog: (locationType?: string) =>
     fetchAPI(
       `/locations/catalog${locationType ? `?location_type=${locationType}` : ""}`,
