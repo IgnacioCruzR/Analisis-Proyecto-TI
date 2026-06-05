@@ -18,8 +18,24 @@ from app.models.warehouse import (
     FactVisitas,
     FactAlertas,
     FactFichasClinicas,
+    FactTicket,
+    DimClienteCRM,
+    FactInteraccion,
+    FactTicketArticulo,
+    FactSlaViolacion,
+    FactInventoryMovement,
+    FactInventoryAlert,
 )
-from app.api import events_router, kpis_router
+from app.models.warehouse.alerts import PriorityAlert
+from app.pagos.models import (
+    CierreDiario,
+    DimErrorCode,
+    DimEstadosConciliacion,
+    FactPagos,
+    FactPaymentsEvent,
+    FactSlaEvent,
+)
+from app.api import events_router, inventory_router, kpis_router, analytics_router
 _ = (
     RawEvent,
     FactSubscription,
@@ -33,6 +49,20 @@ _ = (
     FactVisitas,
     FactAlertas,
     FactFichasClinicas,
+    PriorityAlert,
+    CierreDiario,
+    DimErrorCode,
+    DimEstadosConciliacion,
+    FactPagos,
+    FactPaymentsEvent,
+    FactSlaEvent,
+    FactTicket,
+    DimClienteCRM,
+    FactInteraccion,
+    FactTicketArticulo,
+    FactSlaViolacion,
+    FactInventoryMovement,
+    FactInventoryAlert,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -61,6 +91,8 @@ app.add_middleware(
 
 app.include_router(events_router)
 app.include_router(kpis_router)
+app.include_router(inventory_router)
+app.include_router(analytics_router)
 
 
 @app.get("/", tags=["health"])

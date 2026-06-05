@@ -10,6 +10,8 @@ import {
   paymentsAPI,
   logisticsAPI,
   overviewAPI,
+  inventoryAPI,
+  crmAPI,
 } from '@/services/api'
 import type { OrderChannelsResponse, OrderStatusResponse, OrderTimelineResponse } from '@/types/analytics'
 
@@ -108,6 +110,14 @@ export function usePaymentTimeline() {
   return useSWR('payments-timeline', paymentsAPI.getTimeline, swrConfig)
 }
 
+export function usePaymentFailures(hours = 24, topN = 10) {
+  return useSWR(`payments-failures-${hours}-${topN}`, () => paymentsAPI.getFailures(hours, topN), swrConfig)
+}
+
+export function usePaymentConciliation(hours = 24) {
+  return useSWR(`payments-conciliation-${hours}`, () => paymentsAPI.getConciliation(hours), swrConfig)
+}
+
 // Logistics hooks
 export function useLogisticsKPIs() {
   return useSWR('logistics-kpis', logisticsAPI.getKPIs, swrConfig)
@@ -132,4 +142,54 @@ export function useRecentActivities() {
 
 export function useCriticalAlerts() {
   return useSWR('overview-alerts', overviewAPI.getCriticalAlerts, swrConfig)
+}
+
+// CRM hooks
+export function useCRMKPIs() {
+  return useSWR('crm-kpis', crmAPI.getKPIs, swrConfig)
+}
+
+export function useCRMTimeline(days = 14) {
+  return useSWR(`crm-timeline-${days}`, () => crmAPI.getTimeline(days), swrConfig)
+}
+
+export function useCRMTickets() {
+  return useSWR('crm-tickets', crmAPI.getTickets, swrConfig)
+}
+
+export function useCRMSLA() {
+  return useSWR('crm-sla', crmAPI.getSLA, swrConfig)
+}
+
+// Inventory hooks
+export function useInventoryKPIs() {
+  return useSWR('inventory-kpis', inventoryAPI.getKPIs, swrConfig)
+}
+
+export function useWarehouseCapacity() {
+  return useSWR('inventory-warehouse-capacity', inventoryAPI.getWarehouseCapacity, swrConfig)
+}
+
+export function useLowStockItems() {
+  return useSWR('inventory-low-stock', inventoryAPI.getLowStockItems, swrConfig)
+}
+
+export function useStockStatusSummary() {
+  return useSWR('inventory-stock-status', inventoryAPI.getStockStatus, swrConfig)
+}
+
+export function useLocationsCatalog(locationType?: string) {
+  return useSWR(
+    `inventory-locations-${locationType ?? 'all'}`,
+    () => inventoryAPI.getLocationsCatalog(locationType),
+    swrConfig,
+  )
+}
+
+export function useProductsThresholds(belowThreshold?: boolean) {
+  return useSWR(
+    `inventory-thresholds-${String(belowThreshold)}`,
+    () => inventoryAPI.getProductsThresholds(belowThreshold),
+    swrConfig,
+  )
 }

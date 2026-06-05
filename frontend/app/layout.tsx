@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Analytics Platform | Codex',
+  title: 'Analytics Platform | Enterprise BI & Observability',
   description: 'Centralized operational analytics and BI platform for real-time monitoring and insights',
   icons: {
     icon: [

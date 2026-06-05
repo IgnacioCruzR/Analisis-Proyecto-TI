@@ -1,14 +1,29 @@
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env.local from project root
+# __file__ is at: ...backend/app/db/session.py
+# We need to go up 3 levels to reach the project root
+current_dir = Path(__file__).resolve()
+project_root = current_dir.parent.parent.parent.parent  # Up 4 levels to project root
+env_file = project_root / ".env.local"
+
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    # Fallback to .env or environment variables
+    load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is not set")
+    raise ValueError(
+        f"DATABASE_URL environment variable is not set. "
+        f"Expected .env.local at {env_file} or DATABASE_URL in environment."
+    )
 
 
 engine = create_engine(

@@ -1,6 +1,6 @@
 /**
  * Cliente del backend FastAPI para el dominio salud (KPIs desde el warehouse).
- * Base URL: NEXT_PUBLIC_API_BASE_URL (ej. http://127.0.0.1:8000)
+ * Base URL: NEXT_PUBLIC_API_URL (ej. http://127.0.0.1:8000)
  */
 import { getAccessToken } from '@/lib/keycloak'
 

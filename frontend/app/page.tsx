@@ -1,16 +1,11 @@
 'use client'
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { useGlobalKPIs, useServiceStatuses, useRecentActivities } from '@/hooks/use-analytics'
 import {
-  BarChart2,
   Bell,
   Cpu,
   ShoppingCart,
   RefreshCw,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
   Activity as ActivityLucide,
   ChevronRight,
   Heart,
@@ -22,7 +17,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-// ── domain cards config ───────────────────────────────────────────────────────
 const DOMAINS = [
   {
     key: 'orders',
@@ -73,10 +67,10 @@ const DOMAINS = [
     accent: 'var(--chart-2)',
   },
   {
-    key: 'payments',
+    key: 'pagos',
     label: 'Pagos',
     description: 'Procesamiento seguro, conciliación y métricas financieras',
-    href: '/payments',
+    href: '/pagos',
     icon: CreditCard,
     accent: 'var(--chart-2)',
   },
@@ -106,17 +100,13 @@ const DOMAINS = [
   },
 ]
 
-
-
 export default function HomePage() {
-
   return (
     <DashboardLayout>
       <div className="space-y-8 pb-8">
 
-        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        {/* Hero */}
         <div className="relative overflow-hidden rounded-2xl border border-border bg-card px-8 py-10">
-          {/* subtle grid texture */}
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.03]"
             style={{
@@ -125,12 +115,10 @@ export default function HomePage() {
               backgroundSize: '40px 40px',
             }}
           />
-          {/* accent blob */}
           <div
             className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
             style={{ background: 'var(--chart-1)', opacity: 0.08 }}
           />
-
           <div className="relative flex flex-col gap-2 max-w-2xl">
             <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
               <ActivityLucide className="h-3.5 w-3.5" />
@@ -141,12 +129,11 @@ export default function HomePage() {
             </h1>
             <p className="text-muted-foreground leading-relaxed">
               Monitorea en tiempo real el rendimiento de todos los dominios operacionales
-              
             </p>
           </div>
         </div>
 
-        {/* ── Domain Cards ─────────────────────────────────────────────── */}
+        {/* Domain Cards */}
         <div>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
             Dominios
@@ -160,12 +147,10 @@ export default function HomePage() {
                   href={d.href}
                   className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-border/80 hover:shadow-md hover:-translate-y-0.5"
                 >
-                  {/* accent top bar */}
                   <div
                     className="absolute inset-x-0 top-0 h-0.5 opacity-60 transition-opacity group-hover:opacity-100"
                     style={{ background: d.accent }}
                   />
-
                   <div className="flex items-start justify-between">
                     <div
                       className="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -175,7 +160,6 @@ export default function HomePage() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
                   </div>
-
                   <div className="mt-4">
                     <div className="font-semibold text-foreground">{d.label}</div>
                     <div className="mt-1 text-sm text-muted-foreground leading-snug">
@@ -188,12 +172,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ── Bottom Grid: Service Status + Activity ────────────────────── */}
-        <div className="grid gap-6 lg:grid-cols-2">
-
- 
-
-        </div>
       </div>
     </DashboardLayout>
   )

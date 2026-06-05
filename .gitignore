@@ -13,7 +13,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-
 lib64/
 parts/
 sdist/
@@ -24,6 +23,7 @@ wheels/
 *.egg
 
 .env
+.env*.local
 .vscode/
 .idea/
 *.swp
@@ -31,3 +31,4 @@ wheels/
 
 .DS_Store
 *.log
+*.db

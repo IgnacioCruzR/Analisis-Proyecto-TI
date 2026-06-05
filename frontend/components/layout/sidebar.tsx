@@ -14,7 +14,6 @@ import {
   Users,
   AlertTriangle,
   Heart,
-  Shield,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -33,17 +32,17 @@ interface NavItem {
 }
 
 const navigation: NavItem[] = [
+  { name: 'Overview', href: '/', icon: LayoutDashboard, roles: ['admin', 'analista'] },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart, roles: ['admin', 'analista', 'orders'] },
   { name: 'Suscripciones', href: '/subscriptions', icon: RefreshCw, roles: ['admin', 'analista', 'subscriptions'] },
   { name: 'Salud', href: '/health', icon: Heart, roles: ['admin', 'analista', 'salud'] },
   { name: 'Incidentes', href: '/incidents', icon: AlertTriangle, roles: ['admin', 'analista', 'incidents'] },
-  // Modulos planeados (roadmap): visibles solo para admin hasta que se implementen.
-  { name: 'Notificaciones', href: '/notifications', icon: Bell, roles: ['admin'] },
-  { name: 'IoT', href: '/iot', icon: Cpu, roles: ['admin'] },
-  { name: 'Pagos', href: '/payments', icon: CreditCard, roles: ['admin'] },
-  { name: 'Logística', href: '/logistics', icon: Truck, roles: ['admin'] },
-  { name: 'Inventario', href: '/inventory', icon: Package, roles: ['admin'] },
-  { name: 'CRM', href: '/crm', icon: Users, roles: ['admin'] },
+  { name: 'Notificaciones', href: '/notifications', icon: Bell, roles: ['admin', 'analista'] },
+  { name: 'IoT', href: '/iot', icon: Cpu, roles: ['admin', 'analista'] },
+  { name: 'Pagos', href: '/pagos', icon: CreditCard, roles: ['admin', 'analista'] },
+  { name: 'Logística', href: '/logistics', icon: Truck, roles: ['admin', 'analista'] },
+  { name: 'Inventario', href: '/inventory', icon: Package, roles: ['admin', 'analista'] },
+  { name: 'CRM', href: '/crm', icon: Users, roles: ['admin', 'analista'] },
 ]
 
 interface SidebarProps {
@@ -73,7 +72,7 @@ export function Sidebar({ className }: SidebarProps) {
               <Activity className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-lg font-semibold text-foreground">
-              Codex-Analytics
+              Analytics
             </span>
           </Link>
         )}

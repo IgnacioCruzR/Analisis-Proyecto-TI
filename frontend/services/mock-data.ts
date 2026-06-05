@@ -25,6 +25,18 @@ import type {
   NotificationTimelinePoint,
   NotificationStatusResponse,
   NotificationTimelineResponse,
+  InventoryKPIs,
+  WarehouseCapacity,
+  LowStockItem,
+  StockStatusSummary,
+  LocationsCatalogResponse,
+  ProductsThresholdsResponse,
+  PaymentFailuresResponse,
+  PaymentConciliationResponse,
+  CRMKPIs,
+  CRMTimeline,
+  CRMTicketsResponse,
+  CRMSLASummary,
 } from "@/types/analytics";
 
 // Orders Mock Data
@@ -340,6 +352,29 @@ export const paymentTimeline: PaymentTimeline[] = Array.from(
   },
 );
 
+export const paymentFailures: PaymentFailuresResponse = {
+  rejection_rate: 2.1,
+  total:          45892,
+  failed:         964,
+  reasons: [
+    { reason: "Fondos insuficientes",       count: 434, percentage: 45.0 },
+    { reason: "Tarjeta rechazada",          count: 230, percentage: 23.9 },
+    { reason: "Timeout del proveedor",      count: 169, percentage: 17.5 },
+    { reason: "Error de validación",        count: 131, percentage: 13.6 },
+  ],
+}
+
+export const paymentConciliation: PaymentConciliationResponse = {
+  statuses: [
+    { status: "Aprobado",                    count: 44820, percentage: 97.7 },
+    { status: "esperando_revisión",          count: 660,   percentage: 1.4  },
+    { status: "discrepancia_de_monto",       count: 298,   percentage: 0.6  },
+    { status: "discrepancia_de_transacciones", count: 114, percentage: 0.3  },
+  ],
+  total:         45892,
+  approval_rate: 97.66,
+}
+
 // Logistics Mock Data
 export const logisticsKPIs: LogisticsKPIs = {
   activeRoutes: 128,
@@ -489,6 +524,271 @@ export const criticalAlerts: Alert[] = [
     timestamp: "2 hours ago",
   },
 ];
+
+// ─── Inventory Mock Data ──────────────────────────────────────────────────────
+
+export const inventoryKPIs: InventoryKPIs = {
+  total_skus:         28456,
+  total_stock_value:  4250000,
+  warehouses_count:   4,
+  low_stock_count:    24,
+  out_of_stock_count: 3,
+  turnover_rate:      4.2,
+}
+
+export const warehouseCapacity: WarehouseCapacity[] = [
+  {
+    location_id:   '00000000-0000-0000-0000-000000000001',
+    location_code: 'BODEGA-SCL-01',
+    location_name: 'Bodega Central Santiago',
+    location_type: 'WAREHOUSE',
+    city:          'Santiago',
+    stock:         8540,
+    capacity:      10000,
+    utilization:   85.4,
+  },
+  {
+    location_id:   '00000000-0000-0000-0000-000000000002',
+    location_code: 'BODEGA-VLP-01',
+    location_name: 'Bodega Valparaíso',
+    location_type: 'WAREHOUSE',
+    city:          'Valparaíso',
+    stock:         6230,
+    capacity:      8000,
+    utilization:   77.9,
+  },
+  {
+    location_id:   '00000000-0000-0000-0000-000000000004',
+    location_code: 'DC-NORTE-01',
+    location_name: 'CD Norte Antofagasta',
+    location_type: 'DISTRIBUTION_CENTER',
+    city:          'Antofagasta',
+    stock:         4120,
+    capacity:      6000,
+    utilization:   68.7,
+  },
+  {
+    location_id:   '00000000-0000-0000-0000-000000000005',
+    location_code: 'DC-SUR-01',
+    location_name: 'CD Sur Concepción',
+    location_type: 'DISTRIBUTION_CENTER',
+    city:          'Concepción',
+    stock:         9200,
+    capacity:      12000,
+    utilization:   76.7,
+  },
+]
+
+export const lowStockItems: LowStockItem[] = [
+  {
+    sku_id:                'SKU-MECH-001',
+    product_name:          'Widget Pro',
+    category:              'Partes mecánicas',
+    unit:                  'unidad',
+    critical_threshold:    50,
+    total_available_stock: 12,
+    total_physical_stock:  15,
+    total_reserved_stock:  3,
+    locations_count:       2,
+    is_out_of_stock:       false,
+    last_updated:          '2026-05-28T08:30:00Z',
+  },
+  {
+    sku_id:                'SKU-ELEC-042',
+    product_name:          'Connector A',
+    category:              'Componentes electrónicos',
+    unit:                  'unidad',
+    critical_threshold:    30,
+    total_available_stock: 8,
+    total_physical_stock:  8,
+    total_reserved_stock:  0,
+    locations_count:       1,
+    is_out_of_stock:       false,
+    last_updated:          '2026-05-28T07:15:00Z',
+  },
+  {
+    sku_id:                'SKU-ELEC-089',
+    product_name:          'Sensor Module T200',
+    category:              'Componentes electrónicos',
+    unit:                  'unidad',
+    critical_threshold:    25,
+    total_available_stock: 0,
+    total_physical_stock:  0,
+    total_reserved_stock:  0,
+    locations_count:       1,
+    is_out_of_stock:       true,
+    last_updated:          '2026-05-28T06:00:00Z',
+  },
+  {
+    sku_id:                'SKU-TOOL-156',
+    product_name:          'Power Unit B12',
+    category:              'Herramientas',
+    unit:                  'unidad',
+    critical_threshold:    40,
+    total_available_stock: 15,
+    total_physical_stock:  20,
+    total_reserved_stock:  5,
+    locations_count:       2,
+    is_out_of_stock:       false,
+    last_updated:          '2026-05-27T23:45:00Z',
+  },
+  {
+    sku_id:                'SKU-CHEM-003',
+    product_name:          'Lubricante Industrial LX',
+    category:              'Insumos químicos',
+    unit:                  'litro',
+    critical_threshold:    20,
+    total_available_stock: 0,
+    total_physical_stock:  0,
+    total_reserved_stock:  0,
+    locations_count:       1,
+    is_out_of_stock:       true,
+    last_updated:          '2026-05-28T05:30:00Z',
+  },
+]
+
+export const stockStatusSummary: StockStatusSummary[] = [
+  { status: 'NORMAL',       count: 28429, percentage: 99.9 },
+  { status: 'CRITICAL',     count: 24,    percentage: 0.08 },
+  { status: 'OUT_OF_STOCK', count: 3,     percentage: 0.01 },
+]
+
+export const locationsCatalog: LocationsCatalogResponse = {
+  data: [
+    {
+      location_id:   '00000000-0000-0000-0000-000000000001',
+      location_code: 'BODEGA-SCL-01',
+      location_name: 'Bodega Central Santiago',
+      location_type: 'WAREHOUSE',
+      address:       'Av. Industrial 4500, Quilicura',
+      city:          'Santiago',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-01-15T08:00:00Z',
+    },
+    {
+      location_id:   '00000000-0000-0000-0000-000000000002',
+      location_code: 'BODEGA-VLP-01',
+      location_name: 'Bodega Valparaíso',
+      location_type: 'WAREHOUSE',
+      address:       'Ruta 68 Km 90',
+      city:          'Valparaíso',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-02-01T09:00:00Z',
+    },
+    {
+      location_id:   '00000000-0000-0000-0000-000000000003',
+      location_code: 'BODEGA-SCL-02',
+      location_name: 'Bodega Sur Santiago',
+      location_type: 'WAREHOUSE',
+      address:       'Camino a Melipilla 1200',
+      city:          'Santiago',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-03-01T10:00:00Z',
+    },
+    {
+      location_id:   '00000000-0000-0000-0000-000000000004',
+      location_code: 'DC-NORTE-01',
+      location_name: 'CD Norte Antofagasta',
+      location_type: 'DISTRIBUTION_CENTER',
+      address:       'Ruta 1 Norte Km 12',
+      city:          'Antofagasta',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-03-10T10:00:00Z',
+    },
+    {
+      location_id:   '00000000-0000-0000-0000-000000000005',
+      location_code: 'DC-SUR-01',
+      location_name: 'CD Sur Concepción',
+      location_type: 'DISTRIBUTION_CENTER',
+      address:       'Av. Industrial Sur 800',
+      city:          'Concepción',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-04-01T08:30:00Z',
+    },
+    {
+      location_id:   '00000000-0000-0000-0000-000000000008',
+      location_code: 'RETAIL-RM-01',
+      location_name: 'Tienda Providencia',
+      location_type: 'RETAIL_POINT',
+      address:       'Av. Providencia 1234, Local 5',
+      city:          'Santiago',
+      country:       'Chile',
+      is_active:     true,
+      created_at:    '2025-06-01T09:30:00Z',
+    },
+  ],
+  total:        6,
+  generated_at: new Date().toISOString(),
+}
+
+export const productsThresholds: ProductsThresholdsResponse = {
+  data: [
+    ...lowStockItems,
+    {
+      sku_id:                'SKU-PACK-201',
+      product_name:          'Caja Corrugada 30x30',
+      category:              'Embalaje',
+      unit:                  'unidad',
+      critical_threshold:    200,
+      total_available_stock: 1450,
+      total_physical_stock:  1500,
+      total_reserved_stock:  50,
+      locations_count:       3,
+      is_below_threshold:    false,
+      is_out_of_stock:       false,
+      last_updated:          '2026-05-28T09:00:00Z',
+    },
+  ].map((item) => ({ ...item, is_below_threshold: (item as LowStockItem).total_available_stock <= (item as LowStockItem).critical_threshold })),
+  total:                 6,
+  total_below_threshold: 5,
+  total_out_of_stock:    2,
+  generated_at:          new Date().toISOString(),
+}
+
+// ─── CRM Mock Data ───────────────────────────────────────────────────────────
+
+export const crmKPIs: CRMKPIs = {
+  totalCustomers:         24856,
+  openTickets:            142,
+  avgResponseTimeMinutes: 18,
+  csatScore:              4.7,
+  messagesToday:          1245,
+  resolutionRate:         94.5,
+}
+
+export const crmTimeline: CRMTimeline = {
+  days: 14,
+  points: Array.from({ length: 14 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (13 - i))
+    return {
+      date:     d.toISOString().split('T')[0],
+      opened:   Math.floor(80 + Math.random() * 40),
+      resolved: Math.floor(75 + Math.random() * 45),
+    }
+  }),
+}
+
+export const crmTickets: CRMTicketsResponse = {
+  tickets: [
+    { ticketId: 'TKT-4521', asunto: 'Problema con pago de suscripción', estado: 'abierto',       prioridad: 'alta',  canal: 'email',   sourceProject: 'pagos',      openedAt: new Date(Date.now() - 10 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 10 * 60000).toISOString() },
+    { ticketId: 'TKT-4520', asunto: 'No puede acceder a su cuenta',     estado: 'en_progreso',   prioridad: 'media', canal: 'chat',    sourceProject: 'auth',       openedAt: new Date(Date.now() - 25 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 20 * 60000).toISOString() },
+    { ticketId: 'TKT-4519', asunto: 'Solicitud: exportar a CSV',        estado: 'abierto',       prioridad: 'baja',  canal: 'portal',  sourceProject: 'analytics',  openedAt: new Date(Date.now() - 60 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 60 * 60000).toISOString() },
+    { ticketId: 'TKT-4518', asunto: 'Integración no funciona',          estado: 'cerrado',       prioridad: 'alta',  canal: 'email',   sourceProject: 'inventario', openedAt: new Date(Date.now() - 120 * 60000).toISOString(), updatedAt: new Date(Date.now() - 30 * 60000).toISOString() },
+    { ticketId: 'TKT-4517', asunto: 'Error al generar reporte mensual', estado: 'en_progreso',   prioridad: 'media', canal: 'telefono',sourceProject: 'orders',     openedAt: new Date(Date.now() - 180 * 60000).toISOString(), updatedAt: new Date(Date.now() - 45 * 60000).toISOString() },
+  ],
+}
+
+export const crmSLA: CRMSLASummary = {
+  totalViolations:    8,
+  criticalViolations: 2,
+  slaComplianceRate:  94.5,
+}
 
 // Global KPIs for Overview
 export const globalKPIs = {
