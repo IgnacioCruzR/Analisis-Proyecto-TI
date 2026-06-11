@@ -8,7 +8,6 @@ import {
   iotAPI,
   incidentsAPI,
   paymentsAPI,
-  logisticsAPI,
   overviewAPI,
   inventoryAPI,
   crmAPI,
@@ -116,15 +115,6 @@ export function usePaymentFailures(hours = 24, topN = 10) {
 
 export function usePaymentConciliation(hours = 24) {
   return useSWR(`payments-conciliation-${hours}`, () => paymentsAPI.getConciliation(hours), swrConfig)
-}
-
-// Logistics hooks
-export function useLogisticsKPIs() {
-  return useSWR('logistics-kpis', logisticsAPI.getKPIs, swrConfig)
-}
-
-export function useRoutes() {
-  return useSWR('logistics-routes', logisticsAPI.getRoutes, swrConfig)
 }
 
 // Overview hooks

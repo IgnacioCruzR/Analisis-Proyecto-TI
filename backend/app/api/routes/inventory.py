@@ -4,9 +4,9 @@ Endpoints REST de consulta del módulo de Inventario (Grupo 5).
 Expuestos para el proceso de carga inicial y conciliación periódica
 del módulo de Analítica (Proyecto 9).
 
-  GET /inventory/snapshot    →  Estado físico vs reservado (paginado)
-  GET /locations/catalog     →  Catálogo de ubicaciones (filtrable)
-  GET /products/thresholds   →  SKUs con niveles críticos
+  GET /inventory/snapshot              →  Estado físico vs reservado (paginado)
+  GET /inventory/locations/catalog     →  Catálogo de ubicaciones (filtrable)
+  GET /inventory/products/thresholds   →  SKUs con niveles críticos
 
 Todos los endpoints son de solo lectura (GET).
 No requieren body; los filtros se pasan como query parameters.
@@ -44,7 +44,7 @@ from app.services.inventory_query_service import (
 )
 
 router = APIRouter(
-    prefix="",
+    prefix="/inventory",
     tags=["inventory — consulta analítica"],
     dependencies=[Depends(require_any_role(["admin", "analista"]))],
     responses={
@@ -61,7 +61,7 @@ router = APIRouter(
 # ============================================================================
 
 @router.get(
-    "/inventory/kpis",
+    "/kpis",
     response_model=InventoryKPIsResponse,
     status_code=status.HTTP_200_OK,
     summary="KPIs globales de inventario",
@@ -94,7 +94,7 @@ async def get_kpis(db: Session = Depends(get_db)) -> InventoryKPIsResponse:
 # ============================================================================
 
 @router.get(
-    "/inventory/stock-status",
+    "/stock-status",
     response_model=InventoryStockStatusResponse,
     status_code=status.HTTP_200_OK,
     summary="Distribución de SKUs por estado de stock",
@@ -130,7 +130,7 @@ async def get_stock_status(db: Session = Depends(get_db)) -> InventoryStockStatu
 # ============================================================================
 
 @router.get(
-    "/inventory/snapshot",
+    "/snapshot",
     response_model=InventorySnapshotResponse,
     status_code=status.HTTP_200_OK,
     summary="Snapshot de inventario (saldo físico vs reservado)",
