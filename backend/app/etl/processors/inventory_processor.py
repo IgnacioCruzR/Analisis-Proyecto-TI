@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -52,7 +52,7 @@ def _handle_movement(db: Session, raw_event: Any) -> FactInventoryMovement:
     movement_at = (
         _parse_dt(payload.get("created_at"))
         or _parse_dt(payload.get("movement_at"))
-        or datetime.utcnow()
+        or datetime.now(tz=timezone.utc)
     )
 
     movement = FactInventoryMovement(
@@ -86,7 +86,7 @@ def _handle_alert(db: Session, raw_event: Any) -> FactInventoryAlert:
         threshold_limite=payload.get("threshold_limite"),
         is_stock_out=(raw_event.event_type == "stock_out_error" or current_stock == 0),
         raw_event_id=raw_event.event_id,
-        alert_at=datetime.utcnow(),
+        alert_at=datetime.now(tz=timezone.utc),
     )
     db.add(alert)
     db.flush()

@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.auth import require_any_role
 from app.db import get_db
@@ -264,8 +264,8 @@ async def get_subscriptions_timeline(days: int = 30, db: Session = Depends(get_d
             for point in timeline_data
         ) if timeline_data else 0
         
-        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
-        end_date = datetime.utcnow().date().isoformat()
+        start_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).date().isoformat()
+        end_date = datetime.now(tz=timezone.utc).date().isoformat()
         
         timeline_points = [
             SubscriptionTimelinePoint(
@@ -500,8 +500,8 @@ async def get_orders_timeline(days: int = 30, db: Session = Depends(get_db)) -> 
         
         total_orders = sum(point["order_count"] for point in timeline_data)
         
-        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
-        end_date = datetime.utcnow().date().isoformat()
+        start_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).date().isoformat()
+        end_date = datetime.now(tz=timezone.utc).date().isoformat()
         
         return TimelineResponse(
             start_date=start_date,
@@ -1139,8 +1139,8 @@ async def get_iot_timeline_endpoint(
         
         if not timeline_data:
             # Devolver respuesta válida incluso si no hay datos
-            start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
-            end_date = datetime.utcnow().date().isoformat()
+            start_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).date().isoformat()
+            end_date = datetime.now(tz=timezone.utc).date().isoformat()
             
             return IoTTimelineResponse(
                 start_date=start_date,
@@ -1149,8 +1149,8 @@ async def get_iot_timeline_endpoint(
                 timeline=[]
             )
         
-        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
-        end_date = datetime.utcnow().date().isoformat()
+        start_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).date().isoformat()
+        end_date = datetime.now(tz=timezone.utc).date().isoformat()
         total_events = sum(point["events_count"] for point in timeline_data)
         
         timeline_points = [
@@ -1300,8 +1300,8 @@ async def get_notifications_timeline_endpoint(
             raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
         timeline = get_notifications_timeline(db, days)
         total = sum(p["total"] for p in timeline)
-        start_date = (datetime.utcnow() - timedelta(days=days)).date().isoformat()
-        end_date = datetime.utcnow().date().isoformat()
+        start_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).date().isoformat()
+        end_date = datetime.now(tz=timezone.utc).date().isoformat()
         return NotificationTimelineResponse(
             start_date=start_date,
             end_date=end_date,

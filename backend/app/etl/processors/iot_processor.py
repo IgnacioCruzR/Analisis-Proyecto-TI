@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -38,12 +38,12 @@ def _detect_anomaly(event_type: str, payload: Dict[str, Any]) -> bool:
 def _parse_timestamp(timestamp_str: Optional[str]) -> datetime:
     """Parsea timestamp del payload o retorna ahora."""
     if not timestamp_str:
-        return datetime.utcnow()
+        return datetime.now(tz=timezone.utc)
     
     try:
         return datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
     except:
-        return datetime.utcnow()
+        return datetime.now(tz=timezone.utc)
 
 
 def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
@@ -103,7 +103,7 @@ def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
                 has_anomaly=False,
                 low_battery_alert=False,
                 created_at=event_timestamp,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(tz=timezone.utc)
             )
             db.add(fact_iot)
             logger.info("IoT-ETL creando nuevo sensor %s", sensor_id)
@@ -163,7 +163,7 @@ def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
             fact_iot.extra_data = raw_event.payload.get("extra_data")
         
         # 6. Actualizar timestamp de modificación
-        fact_iot.updated_at = datetime.utcnow()
+        fact_iot.updated_at = datetime.now(tz=timezone.utc)
         
         # 7. Persistir en BD
         db.add(fact_iot)

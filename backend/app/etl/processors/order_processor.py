@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -59,9 +59,9 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
             try:
                 created_at = datetime.fromisoformat(payload_created_at.replace('Z', '+00:00'))
             except:
-                created_at = datetime.utcnow()
+                created_at = datetime.now(tz=timezone.utc)
         else:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(tz=timezone.utc)
         
         # 3. Buscar FactOrder existente por order_id
         existing = db.query(FactOrder).filter(
@@ -85,7 +85,7 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
                 stock_reserved=False,
                 delivery_completed=False,
                 created_at=created_at,
-                updated_at=datetime.utcnow()
+                updated_at=datetime.now(tz=timezone.utc)
             )
             db.add(fact_order)
             logger.info("ORDER-ETL creando nueva orden %s", order_id)
@@ -113,7 +113,7 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
             fact_order.status = "stock_unavailable"
         
         # 6. Actualizar timestamp de modificación
-        fact_order.updated_at = datetime.utcnow()
+        fact_order.updated_at = datetime.now(tz=timezone.utc)
         
         # 7. Calcular processing_time_seconds si se entrega
         if raw_event.event_type == "pedido_entregado" and fact_order.created_at:

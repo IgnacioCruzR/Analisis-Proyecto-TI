@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from sqlalchemy import func
@@ -11,7 +11,7 @@ from app.models.warehouse.fact_sla_violaciones import FactSlaViolacion
 
 
 def get_crm_kpis(db: Session) -> Dict[str, Any]:
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
     total_customers = db.query(func.count(DimClienteCRM.id)).scalar() or 0
 
@@ -59,7 +59,7 @@ def get_crm_kpis(db: Session) -> Dict[str, Any]:
 
 def get_crm_timeline(db: Session, days: int = 14) -> List[Dict[str, Any]]:
     result = []
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     for i in range(days - 1, -1, -1):
         day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)

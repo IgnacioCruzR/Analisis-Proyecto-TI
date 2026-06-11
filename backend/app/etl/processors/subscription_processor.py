@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -61,7 +61,7 @@ def process_subscription_event(db: Session, raw_event: RawEvent) -> Optional[Fac
             if start_date and isinstance(start_date, str):
                 start_date = datetime.fromisoformat(start_date).date()
             else:
-                start_date = datetime.utcnow().date()
+                start_date = datetime.now(tz=timezone.utc).date()
             
             # Extraer status del payload
             status = raw_event.payload.get("status", "active")
@@ -72,8 +72,8 @@ def process_subscription_event(db: Session, raw_event: RawEvent) -> Optional[Fac
                 plan_id=plan_id,
                 status=status,
                 start_date=start_date,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(tz=timezone.utc),
+                updated_at=datetime.now(tz=timezone.utc)
             )
             db.add(fact_sub)
         
@@ -105,11 +105,11 @@ def process_subscription_event(db: Session, raw_event: RawEvent) -> Optional[Fac
         
         # 6. Actualizar billing_date si es evento de pago
         if raw_event.event_type in ["payment_success", "payment_failed"]:
-            fact_sub.billing_date = datetime.utcnow()
+            fact_sub.billing_date = datetime.now(tz=timezone.utc)
             fact_sub.billing_attempts = (fact_sub.billing_attempts or 0) + 1
         
         # Actualizar timestamp de modificación
-        fact_sub.updated_at = datetime.utcnow()
+        fact_sub.updated_at = datetime.now(tz=timezone.utc)
         
         # 7. Persistir en BD
         db.add(fact_sub)

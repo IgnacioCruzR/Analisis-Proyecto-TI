@@ -6,7 +6,7 @@ Contiene funciones para calcular KPIs desde fact_iot y raw_events.
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date, Integer, case
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Tuple, Optional
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def get_total_sensors(db: Session, days: Optional[int] = None) -> int:
     """Obtiene cantidad total de sensores únicos."""
     query = db.query(func.count(func.distinct(FactIoT.sensor_id)))
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.created_at >= cutoff_date)
     return query.scalar() or 0
 
@@ -33,7 +33,7 @@ def get_online_sensors(db: Session, days: Optional[int] = None) -> int:
         FactIoT.is_online == True
     )
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     return query.scalar() or 0
 
@@ -44,7 +44,7 @@ def get_offline_sensors(db: Session, days: Optional[int] = None) -> int:
         FactIoT.is_online == False
     )
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     return query.scalar() or 0
 
@@ -71,7 +71,7 @@ def get_avg_battery_level(db: Session, days: Optional[int] = None) -> float:
         FactIoT.battery_level.isnot(None)
     )
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     result = query.scalar()
@@ -88,7 +88,7 @@ def get_low_battery_count(db: Session, days: Optional[int] = None, threshold: in
         FactIoT.battery_level < threshold
     )
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     return query.scalar() or 0
@@ -107,7 +107,7 @@ def get_data_validity_rate(db: Session, days: Optional[int] = None) -> float:
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         total_query = total_query.filter(FactIoT.updated_at >= cutoff_date)
         valid_query = valid_query.filter(FactIoT.updated_at >= cutoff_date)
     
@@ -126,7 +126,7 @@ def get_anomalies_detected(db: Session, days: Optional[int] = None) -> int:
         FactIoT.has_anomaly == True
     )
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     return query.scalar() or 0
@@ -146,7 +146,7 @@ def get_avg_processing_latency_ms(db: Session, days: Optional[int] = None) -> fl
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     result = query.scalar()
@@ -214,7 +214,7 @@ def get_sensors_status(db: Session, days: Optional[int] = None) -> List[Dict[str
     ).distinct(FactIoT.sensor_id)
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     query = query.order_by(FactIoT.sensor_id, FactIoT.updated_at.desc())
@@ -253,7 +253,7 @@ def get_sensors_by_type(db: Session, days: Optional[int] = None) -> List[Dict[st
     ).filter(FactIoT.sensor_type.isnot(None))
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
     
     query = query.group_by(FactIoT.sensor_type)
@@ -284,7 +284,7 @@ def get_iot_events(db: Session, days: Optional[int] = None, limit: int = 100) ->
     ).filter(RawEvent.source == "iot_devices")
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(RawEvent.created_at >= cutoff_date)
     
     query = query.order_by(RawEvent.created_at.desc()).limit(limit)
@@ -307,7 +307,7 @@ def get_iot_events(db: Session, days: Optional[int] = None, limit: int = 100) ->
 
 def get_iot_timeline(db: Session, days: int = 30) -> List[Dict[str, any]]:
     """Obtiene timeline de actividad IoT agrupada por fecha."""
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
     
     query = db.query(
         cast(FactIoT.updated_at, Date).label("date"),

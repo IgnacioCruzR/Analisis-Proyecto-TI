@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -84,7 +84,7 @@ def process_notification_event(
             else:
                 fact = FactNotifications(
                     id_notificacion=id_notificacion,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(tz=timezone.utc),
                 )
                 db.add(fact)
                 logger.info("Notifications-ETL creando notificación %s", id_notificacion)
@@ -107,7 +107,7 @@ def process_notification_event(
                     f"No existe notificación {id_notificacion} para marcar como entregada"
                 )
             fact.estado        = "entregado"
-            fact.fecha_entrega = _parse_timestamp(payload.get("timestamp")) or datetime.utcnow()
+            fact.fecha_entrega = _parse_timestamp(payload.get("timestamp")) or datetime.now(tz=timezone.utc)
 
         elif raw_event.event_type == "fallback_activado":
             if not fact:
@@ -128,7 +128,7 @@ def process_notification_event(
             fact.intentos = payload.get("intentos") or (fact.intentos or 1) + 1
 
         # 5. Actualizar timestamp
-        fact.updated_at = datetime.utcnow()
+        fact.updated_at = datetime.now(tz=timezone.utc)
 
         db.add(fact)
         db.flush()

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -43,7 +43,7 @@ def _get_or_create_incident(db: Session, incident_id: str, payload: Dict[str, An
     if existing:
         return existing
 
-    opened_at = _parse_datetime(payload.get("opened_at")) or datetime.utcnow()
+    opened_at = _parse_datetime(payload.get("opened_at")) or datetime.now(tz=timezone.utc)
     return FactIncident(
         incident_id=incident_id,
         title=payload.get("title") or f"Incident {incident_id}",
@@ -51,8 +51,8 @@ def _get_or_create_incident(db: Session, incident_id: str, payload: Dict[str, An
         status=payload.get("status") or "open",
         assignee=payload.get("assignee"),
         opened_at=opened_at,
-        updated_at=datetime.utcnow(),
-        created_at=datetime.utcnow(),
+        updated_at=datetime.now(tz=timezone.utc),
+        created_at=datetime.now(tz=timezone.utc),
     )
 
 
@@ -65,7 +65,7 @@ def _apply_common_fields(fact: FactIncident, payload: Dict[str, Any]) -> None:
         fact.status = payload["status"]
     if "assignee" in payload:
         fact.assignee = payload.get("assignee")
-    fact.updated_at = datetime.utcnow()
+    fact.updated_at = datetime.now(tz=timezone.utc)
 
 
 def _handle_incident_created(db: Session, raw_event: RawEvent) -> FactIncident:
@@ -86,7 +86,7 @@ def _handle_incident_assigned(db: Session, raw_event: RawEvent) -> FactIncident:
     incident_id = _validate_base_payload(payload)
     fact = _get_or_create_incident(db, incident_id, payload)
     fact.assignee = payload.get("assignee")
-    fact.updated_at = datetime.utcnow()
+    fact.updated_at = datetime.now(tz=timezone.utc)
     db.add(fact)
     db.flush()
     return fact
@@ -109,7 +109,7 @@ def _handle_incident_resolved(db: Session, raw_event: RawEvent) -> FactIncident:
     _apply_common_fields(fact, payload)
 
     fact.status = "resolved"
-    resolved_at = _parse_datetime(payload.get("resolved_at")) or datetime.utcnow()
+    resolved_at = _parse_datetime(payload.get("resolved_at")) or datetime.now(tz=timezone.utc)
     fact.resolved_at = resolved_at
 
     if payload.get("resolution_time_hours") is not None:
@@ -121,7 +121,7 @@ def _handle_incident_resolved(db: Session, raw_event: RawEvent) -> FactIncident:
     if "sla_met" in payload:
         fact.sla_met = bool(payload["sla_met"])
 
-    fact.updated_at = datetime.utcnow()
+    fact.updated_at = datetime.now(tz=timezone.utc)
     db.add(fact)
     db.flush()
     return fact

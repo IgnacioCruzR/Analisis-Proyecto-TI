@@ -1,6 +1,6 @@
 from sqlalchemy import func, and_, or_, cast, Date, Integer
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 from app.models import FactSubscription
 
@@ -9,7 +9,7 @@ def _get_total_subscriptions(db: Session, days: Optional[int] = None) -> int:
     query = db.query(func.count(FactSubscription.id))
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactSubscription.created_at >= cutoff_date)
     
     return query.scalar() or 0
@@ -20,7 +20,7 @@ def _round_percentage(value: float) -> float:
 
 
 def get_renewal_rate(db: Session, days: Optional[int] = None) -> float:
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactSubscription.id))
     renewed_query = db.query(func.count(FactSubscription.id)).filter(
@@ -44,7 +44,7 @@ def get_renewal_rate(db: Session, days: Optional[int] = None) -> float:
 
 
 def get_error_rate(db: Session, days: Optional[int] = None) -> float:
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactSubscription.id))
     error_query = db.query(func.count(FactSubscription.id)).filter(
@@ -66,7 +66,7 @@ def get_error_rate(db: Session, days: Optional[int] = None) -> float:
 
 
 def get_auto_service_rate(db: Session, days: Optional[int] = None) -> float:
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactSubscription.id))
     auto_service_query = db.query(func.count(FactSubscription.id)).filter(
@@ -88,7 +88,7 @@ def get_auto_service_rate(db: Session, days: Optional[int] = None) -> float:
 
 
 def get_subscription_stats(db: Session, days: Optional[int] = None) -> dict:
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     base_query = db.query(FactSubscription.id)
     if cutoff_date:
@@ -144,7 +144,7 @@ def get_subscription_stats(db: Session, days: Optional[int] = None) -> dict:
         lifetimes = []
         for start, end in subs:
             if start:
-                end_date = end if end else datetime.utcnow().date()
+                end_date = end if end else datetime.now(tz=timezone.utc).date()
                 delta = (end_date - start).days
                 lifetimes.append(delta)
         avg_lifetime_days = sum(lifetimes) / len(lifetimes) if lifetimes else 0
@@ -190,7 +190,7 @@ def get_subscriptions_by_date(db: Session, days: int = 30) -> List[Dict]:
     Returns:
         List de dicts: [{'date': '2026-05-13', 'new_subscriptions': 10, 'renewals': 5, 'cancellations': 2}, ...]
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
     
     # Query para nuevas suscripciones (por created_at)
     new_subs = db.query(
@@ -283,7 +283,7 @@ def get_retention_rate(db: Session, period_days: int) -> float:
         float: Retention rate como porcentaje (0-100)
     """
     
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     start_of_period = now - timedelta(days=period_days)
     
     # Una suscripción estaba activa en start_of_period si:

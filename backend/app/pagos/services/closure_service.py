@@ -80,7 +80,7 @@ def process_cierre_diario(db: Session, payload: Dict) -> CierreDiario:
         db.flush()
 
     # create closure record
-    inicio = datetime.utcnow()
+    inicio = datetime.now(tz=timezone.utc)
     cierre = CierreDiario(
         fecha=fecha,
         reported_total=reported_total,
@@ -110,7 +110,7 @@ def process_cierre_diario(db: Session, payload: Dict) -> CierreDiario:
             db.flush()
 
     # finalize closure
-    fin = datetime.utcnow()
+    fin = datetime.now(tz=timezone.utc)
     cierre.processed_at = fin
     cierre.duration_seconds = int((fin - inicio).total_seconds())
 

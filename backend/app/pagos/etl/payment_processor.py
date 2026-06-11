@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -70,9 +70,9 @@ def process_payment_event(db: Session, raw_event) -> FactPagos:
         try:
             timestamp = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
         except Exception:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(tz=timezone.utc)
     else:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(tz=timezone.utc)
 
     fact = FactPagos(
         transaction_id=transaction_id,

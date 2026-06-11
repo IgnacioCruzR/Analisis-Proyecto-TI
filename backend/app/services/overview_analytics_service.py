@@ -8,7 +8,7 @@ payments, logistics); para esos KPIs reporta 0 o derivados.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func
@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models import FactIncident, FactOrder, FactSubscription, RawEvent
 
 def _format_relative_time(dt: datetime) -> str:
-    delta = datetime.utcnow() - dt
+    delta = datetime.now(tz=timezone.utc) - dt
     seconds = int(delta.total_seconds())
     if seconds < 60:
         return "just now"

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Tuple, Type
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -57,7 +57,7 @@ def _process_source_pipeline(
 
 
 def run_etl(db: Session, dry_run: bool = False) -> dict:
-    start_time = datetime.utcnow()
+    start_time = datetime.now(tz=timezone.utc)
     stats = {
         "start_time": start_time,
         "total_events": 0,
@@ -92,7 +92,7 @@ def run_etl(db: Session, dry_run: bool = False) -> dict:
             dry_run=dry_run,
         )
 
-        stats["end_time"] = datetime.utcnow()
+        stats["end_time"] = datetime.now(tz=timezone.utc)
         stats["duration_seconds"] = (stats["end_time"] - start_time).total_seconds()
 
         if stats["errors"]:

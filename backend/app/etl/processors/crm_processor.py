@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -44,7 +44,7 @@ def _get_or_create_ticket(db: Session, ticket_id: str, payload: Dict[str, Any]) 
         pedido_id_ref=payload.get("pedido_id_ref"),
         suscripcion_id_red=payload.get("suscripcion_id_red"),
         fecha_vencimiento_sla=_parse_dt(payload.get("fecha_vencimiento_sla")),
-        opened_at=datetime.utcnow(),
+        opened_at=datetime.now(tz=timezone.utc),
     )
 
 
@@ -62,7 +62,7 @@ def _upsert_cliente(db: Session, payload: Dict[str, Any]) -> Optional[DimCliente
             cliente.email = payload["email"]
         if payload.get("telefono"):
             cliente.telefono = payload["telefono"]
-        cliente.updated_at = datetime.utcnow()
+        cliente.updated_at = datetime.now(tz=timezone.utc)
     else:
         cliente = DimClienteCRM(
             cliente_identidad_id=identidad_id,
@@ -95,7 +95,7 @@ def _handle_ticket_asignado(db: Session, payload: Dict[str, Any]) -> FactTicket:
     ticket = _get_or_create_ticket(db, ticket_id, payload)
     ticket.estado = payload.get("estado", ticket.estado)
     ticket.agente_id = payload.get("agente_id", ticket.agente_id)
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = datetime.now(tz=timezone.utc)
     db.add(ticket)
     db.flush()
     return ticket
@@ -109,7 +109,7 @@ def _handle_ticket_escalado(db: Session, payload: Dict[str, Any]) -> FactTicket:
     if payload.get("prioridad_al_escalar"):
         ticket.prioridad = payload["prioridad_al_escalar"]
     ticket.estado = payload.get("estado", ticket.estado)
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = datetime.now(tz=timezone.utc)
     db.add(ticket)
     db.flush()
     return ticket
@@ -121,7 +121,7 @@ def _handle_ticket_resuelto(db: Session, payload: Dict[str, Any]) -> FactTicket:
         raise CRMProcessingError("Campo requerido faltante: ticket_id")
     ticket = _get_or_create_ticket(db, ticket_id, payload)
     ticket.estado = "Resuelto"
-    ticket.resolved_at = _parse_dt(payload.get("resolved_at")) or datetime.utcnow()
+    ticket.resolved_at = _parse_dt(payload.get("resolved_at")) or datetime.now(tz=timezone.utc)
     if payload.get("resolution_time_hours") is not None:
         ticket.resolution_time_hours = float(payload["resolution_time_hours"])
     if "within_sla" in payload:
@@ -130,7 +130,7 @@ def _handle_ticket_resuelto(db: Session, payload: Dict[str, Any]) -> FactTicket:
         ticket.prioridad = payload["prioridad"]
     if payload.get("agente_id"):
         ticket.agente_id = payload["agente_id"]
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = datetime.now(tz=timezone.utc)
     db.add(ticket)
     db.flush()
     return ticket
@@ -142,10 +142,10 @@ def _handle_ticket_cerrado(db: Session, payload: Dict[str, Any]) -> FactTicket:
         raise CRMProcessingError("Campo requerido faltante: ticket_id")
     ticket = _get_or_create_ticket(db, ticket_id, payload)
     ticket.estado = "Cerrado"
-    ticket.closed_at = _parse_dt(payload.get("closed_at")) or datetime.utcnow()
+    ticket.closed_at = _parse_dt(payload.get("closed_at")) or datetime.now(tz=timezone.utc)
     if payload.get("csat_score") is not None:
         ticket.csat_score = int(payload["csat_score"])
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = datetime.now(tz=timezone.utc)
     db.add(ticket)
     db.flush()
     return ticket
@@ -212,7 +212,7 @@ def _handle_ticket_sla_violado(db: Session, payload: Dict[str, Any]) -> FactSlaV
         escalation_required=bool(payload.get("escalation_required", False)),
         escalado_hacia=payload.get("escalado_hacia"),
         fecha_vencimiento_sla=_parse_dt(payload.get("fecha_vencimiento_sla")),
-        violation_detected_at=_parse_dt(payload.get("violation_detected_at")) or datetime.utcnow(),
+        violation_detected_at=_parse_dt(payload.get("violation_detected_at")) or datetime.now(tz=timezone.utc),
     )
     db.add(violacion)
     db.flush()

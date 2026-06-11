@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ def check_payments_uptime(db: Session, window_minutes: int = 15) -> Dict[str, An
     - Inserts a PriorityAlert row when anomaly detected.
     Returns a dict with metrics and alert info.
     """
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     start = now - timedelta(minutes=window_minutes)
 
     total = db.query(func.count(FactPagos.transaction_id)).filter(
