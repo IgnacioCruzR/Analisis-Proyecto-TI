@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -110,6 +111,8 @@ from app.schemas.notifications_kpi_schema import (
     NotificationTimelinePoint,
 )
 
+logger = logging.getLogger(__name__)
+
 SUBS_ROLES = ["admin", "analista", "subscriptions"]
 ORDERS_ROLES = ["admin", "analista", "orders"]
 SALUD_ROLES = ["admin", "analista", "salud"]
@@ -148,9 +151,10 @@ async def get_renewal_rate_endpoint(
             value=rate
         )
     except Exception as e:
+        logger.exception("Error calculando renewal_rate")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculando renewal_rate: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -171,9 +175,10 @@ async def get_error_rate_endpoint(
             value=rate
         )
     except Exception as e:
+        logger.exception("Error calculando error_rate")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculando error_rate: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -194,9 +199,10 @@ async def get_auto_service_rate_endpoint(
             value=rate
         )
     except Exception as e:
+        logger.exception("Error calculando auto_service_rate")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculando auto_service_rate: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -228,9 +234,10 @@ async def get_subscription_summary_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculando resumen")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculando resumen: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -280,9 +287,10 @@ async def get_subscriptions_timeline(days: int = 30, db: Session = Depends(get_d
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating subscriptions timeline")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating subscriptions timeline: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -309,9 +317,10 @@ async def get_subscriptions_retention(db: Session = Depends(get_db)):
             }
         }
     except Exception as e:
+        logger.exception("Error calculando retention rates")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculando retention rates: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -350,9 +359,10 @@ async def get_orders_kpis(days: int = 30, db: Session = Depends(get_db)) -> KPIS
         )
     
     except Exception as e:
+        logger.exception("Error calculating KPIs")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating KPIs: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -405,9 +415,10 @@ async def get_orders_by_channels(days: int = 30, db: Session = Depends(get_db)) 
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating channel distribution")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating channel distribution: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -457,9 +468,10 @@ async def get_orders_by_statuses(days: int = 30, db: Session = Depends(get_db)) 
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating status distribution")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating status distribution: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -511,9 +523,10 @@ async def get_orders_timeline(days: int = 30, db: Session = Depends(get_db)) -> 
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating timeline")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating timeline: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -531,9 +544,10 @@ async def orders_health_check(db: Session = Depends(get_db)):
             "orders_in_database": total
         }
     except Exception as e:
+        logger.exception("Health check failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Health check failed: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -554,9 +568,10 @@ async def get_salud_dashboard(db: Session = Depends(get_db)) -> SaludDashboardSu
         data = get_salud_dashboard_summary(db)
         return SaludDashboardSummary(**data)
     except Exception as e:
+        logger.exception("Error KPIs salud")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error KPIs salud: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -583,9 +598,10 @@ async def get_salud_visit_trends_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error tendencia visitas")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error tendencia visitas: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -604,9 +620,10 @@ async def get_salud_today_schedule_endpoint(
         rows = [SaludTodayVisitRow(**v) for v in raw["visits"]]
         return SaludTodayScheduleResponse(date=raw["date"], visits=rows)
     except Exception as e:
+        logger.exception("Error agenda salud")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error agenda salud: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -629,9 +646,10 @@ async def get_incidents_kpis_endpoint(
         data = get_incidents_kpis(db)
         return IncidentKPIsResponse(**data)
     except Exception as e:
+        logger.exception("Error KPIs incidentes")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error KPIs incidentes: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -657,9 +675,10 @@ async def get_incidents_timeline_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error timeline incidentes")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error timeline incidentes: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -685,9 +704,10 @@ async def get_incidents_list_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error listado incidentes")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error listado incidentes: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -709,9 +729,10 @@ async def get_overview_kpis_endpoint(
     try:
         return GlobalKPIsResponse(**get_global_kpis(db))
     except Exception as e:
+        logger.exception("Error KPIs overview")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error KPIs overview: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -729,9 +750,10 @@ async def get_overview_services_endpoint(
         rows = get_service_statuses(db)
         return [ServiceStatusRow(**r) for r in rows]
     except Exception as e:
+        logger.exception("Error servicios overview")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error servicios overview: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -757,9 +779,10 @@ async def get_overview_activities_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error actividad overview")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error actividad overview: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -785,9 +808,10 @@ async def get_overview_alerts_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error alertas overview")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error alertas overview: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -806,9 +830,10 @@ async def get_crm_kpis_endpoint(db: Session = Depends(get_db)) -> CRMKPIsRespons
     try:
         return CRMKPIsResponse(**get_crm_kpis(db))
     except Exception as e:
+        logger.exception("Error KPIs CRM")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error KPIs CRM: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -834,9 +859,10 @@ async def get_crm_timeline_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error timeline CRM")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error timeline CRM: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -862,9 +888,10 @@ async def get_crm_tickets_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error tickets CRM")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error tickets CRM: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -879,9 +906,10 @@ async def get_crm_sla_endpoint(db: Session = Depends(get_db)) -> CRMSLASummary:
     try:
         return CRMSLASummary(**get_sla_summary(db))
     except Exception as e:
+        logger.exception("Error SLA CRM")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error SLA CRM: {str(e)}",
+            detail="Error interno del servidor",
         )
 
 
@@ -921,9 +949,10 @@ async def get_iot_kpis_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating IoT KPIs")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating IoT KPIs: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -970,9 +999,10 @@ async def get_iot_sensors_status(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error getting sensors status")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting sensors status: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -1018,9 +1048,10 @@ async def get_iot_sensors_by_type(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error getting sensors by type")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting sensors by type: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -1079,9 +1110,10 @@ async def get_iot_events_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error getting IoT events")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting IoT events: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -1143,9 +1175,10 @@ async def get_iot_timeline_endpoint(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Error calculating IoT timeline")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error calculating IoT timeline: {str(e)}"
+            detail="Error interno del servidor"
         )
 
 
@@ -1165,9 +1198,10 @@ async def iot_health_check(db: Session = Depends(get_db)):
             "availability_rate": kpis["availability_rate"]
         }
     except Exception as e:
+        logger.exception("Health check failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Health check failed: {str(e)}"
+            detail="Error interno del servidor"
         )
 # ================================================================
 # NOTIFICATIONS — KPIs desde fact_notifications
@@ -1191,7 +1225,8 @@ async def get_notifications_kpis_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error KPIs notificaciones: {str(e)}")
+        logger.exception("Error KPIs notificaciones")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get(
@@ -1218,7 +1253,8 @@ async def get_notifications_channels_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error canales notificaciones: {str(e)}")
+        logger.exception("Error canales notificaciones")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get(
@@ -1244,7 +1280,8 @@ async def get_notifications_status_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error estados notificaciones: {str(e)}")
+        logger.exception("Error estados notificaciones")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get(
@@ -1274,4 +1311,5 @@ async def get_notifications_timeline_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error timeline notificaciones: {str(e)}")
+        logger.exception("Error timeline notificaciones")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

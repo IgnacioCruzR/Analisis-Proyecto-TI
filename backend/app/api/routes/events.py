@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -22,6 +23,8 @@ from app.pagos.services.payment_service import register_payment_attempt, confirm
 from app.pagos.models.fact_payments_events import FactPaymentsEvent
 from app.etl.processors.iot_processor import process_iot_event
 from app.etl.processors.notification_proccessor import process_notification_event
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/events",
@@ -128,9 +131,10 @@ async def ingest_event(
     try:
         db_event = create_event(db=db, event=event, event_id=event_id, ingested_at=ingested_at)
     except Exception as exc:
+        logger.exception("Error al persistir el evento")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al persistir el evento: {exc}",
+            detail="Error interno del servidor",
         )
 
     # Pagos: procesamiento inline (flujo complejo con múltiples event_types y auditoría)
