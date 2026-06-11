@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,8 +21,8 @@ class FactInventoryAlert(Base):
     is_stock_out = Column(Boolean, nullable=False, default=False)
 
     raw_event_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    alert_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    ingested_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    alert_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    ingested_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_fia_sku_alert_ts", "sku_id", "alert_at"),

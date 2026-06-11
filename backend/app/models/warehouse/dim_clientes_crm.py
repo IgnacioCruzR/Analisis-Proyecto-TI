@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Index, Integer, String
 
@@ -14,8 +14,8 @@ class DimClienteCRM(Base):
     email = Column(String(255), nullable=True, unique=True, index=True)
     telefono = Column(String(30), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_dim_clientes_crm_email", "email"),

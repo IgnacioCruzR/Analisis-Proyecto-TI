@@ -47,21 +47,24 @@ def _process_source_pipeline(
         try:
             process_fn(db, raw_event)
             raw_event.processed = True
+            if not dry_run:
+                db.commit()
             stats["successful"] += 1
         except validation_errors as e:
+            db.rollback()
             stats["failed"] += 1
             stats["errors"].append(f"Event {raw_event.id} [{source}]: {str(e)}")
         except SQLAlchemyError as e:
+            db.rollback()
             stats["failed"] += 1
             stats["errors"].append(f"Event {raw_event.id} [{source}]: BD error - {str(e)}")
         except Exception as e:
+            db.rollback()
             stats["failed"] += 1
             stats["errors"].append(f"Event {raw_event.id} [{source}]: {str(e)}")
 
     if dry_run:
         db.rollback()
-    else:
-        db.commit()
 
 
 # Mapa completo de fuentes → (procesador, errores_de_validación)

@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Index
 from app.db.base import Base
 
@@ -26,11 +26,11 @@ class FactSubscription(Base):
     # Billing Metrics
     billing_success = Column(Boolean, default=False)
     billing_attempts = Column(Integer, default=0)
-    billing_date = Column(DateTime, nullable=True)
-    
+    billing_date = Column(DateTime(timezone=True), nullable=True)
+
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (

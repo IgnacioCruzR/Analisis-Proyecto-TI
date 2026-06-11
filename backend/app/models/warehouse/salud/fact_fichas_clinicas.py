@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
@@ -28,8 +28,8 @@ class FactFichasClinicas(Base):
     cantidad_adjuntos = Column(String(10), default='0')
     
     # Timestamp for DWH tracking
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (

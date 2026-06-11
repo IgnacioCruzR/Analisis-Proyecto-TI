@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String
 
@@ -24,9 +24,9 @@ class FactSlaViolacion(Base):
     escalation_required = Column(Boolean, nullable=False, default=False)
     escalado_hacia = Column(String(50), nullable=True)
 
-    fecha_vencimiento_sla = Column(DateTime, nullable=True)
-    violation_detected_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    fecha_vencimiento_sla = Column(DateTime(timezone=True), nullable=True)
+    violation_detected_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_fact_sla_violaciones_ticket_ts", "ticket_id", "violation_detected_at"),

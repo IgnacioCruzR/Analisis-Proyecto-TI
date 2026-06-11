@@ -16,7 +16,7 @@ class CierreDiario(Base):
     internal_total = Column(Numeric(18, 2), nullable=True)
     internal_count = Column(Integer, nullable=True)
     estado_id = Column(Integer, ForeignKey("dim_estados_conciliacion.id"), nullable=False)
-    processed_at = Column(DateTime, nullable=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     note = Column(String(1024), nullable=True)
 

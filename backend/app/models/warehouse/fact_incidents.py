@@ -16,8 +16,8 @@ class FactIncident(Base):
     status = Column(String(30), nullable=False, index=True)
     assignee = Column(String(100), nullable=True)
 
-    opened_at = Column(DateTime, nullable=False, index=True)
-    resolved_at = Column(DateTime, nullable=True, index=True)
+    opened_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True, index=True)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     resolution_time_hours = Column(Float, nullable=True)

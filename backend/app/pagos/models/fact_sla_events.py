@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, Integer, String, DateTime, CheckConstraint, Index
 
@@ -15,7 +15,7 @@ class FactSlaEvent(Base):
     tipo = Column(String(20), nullable=False)       # 'downtime' | 'degraded'
     duracion_segundos = Column(Integer, nullable=True)  # calculado al cerrar el evento
     descripcion = Column(String(512), nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         CheckConstraint("tipo IN ('downtime', 'degraded')", name="ck_sla_event_tipo"),

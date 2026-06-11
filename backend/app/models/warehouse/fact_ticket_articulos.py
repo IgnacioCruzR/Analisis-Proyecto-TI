@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String
 
@@ -19,8 +19,8 @@ class FactTicketArticulo(Base):
     fue_enviado_al_cliente = Column(Boolean, nullable=False, default=False)
     agente_id = Column(String(100), nullable=True)
 
-    vinculado_en = Column(DateTime, nullable=True, index=True)
-    ingested_at = Column(DateTime, default=datetime.utcnow)
+    vinculado_en = Column(DateTime(timezone=True), nullable=True, index=True)
+    ingested_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_fact_ticket_articulos_ticket", "ticket_id"),

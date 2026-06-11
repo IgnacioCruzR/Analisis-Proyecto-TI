@@ -199,7 +199,12 @@ def get_all_iot_kpis(db: Session, days: Optional[int] = None) -> Dict[str, any]:
 # FUNCIONES DE DETALLE Y TIMELINE
 # ================================================================
 
-def get_sensors_status(db: Session, days: Optional[int] = None) -> List[Dict[str, any]]:
+def get_sensors_status(
+    db: Session,
+    days: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> List[Dict[str, any]]:
     """Obtiene estado actual de todos los sensores."""
     query = db.query(
         FactIoT.sensor_id,
@@ -212,14 +217,14 @@ def get_sensors_status(db: Session, days: Optional[int] = None) -> List[Dict[str
         FactIoT.has_anomaly,
         FactIoT.low_battery_alert,
     ).distinct(FactIoT.sensor_id)
-    
+
     if days:
         cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactIoT.updated_at >= cutoff_date)
-    
+
     query = query.order_by(FactIoT.sensor_id, FactIoT.updated_at.desc())
-    
-    results = query.all()
+
+    results = query.offset(offset).limit(limit).all()
     
     return [
         {

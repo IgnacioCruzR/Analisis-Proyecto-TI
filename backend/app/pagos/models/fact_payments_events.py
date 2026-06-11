@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Index, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,7 +18,7 @@ class FactPaymentsEvent(Base):
     token_transaccion = Column(String(255), nullable=False, index=True)
     codigo_error = Column(String(100), nullable=True)
     status = Column(String(100), nullable=False, index=True)
-    timestamp_evento = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True)
+    timestamp_evento = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
     __table_args__ = (
         Index("idx_fact_payments_events_tx_token_ts", "transaction_id", "token_transaccion", "timestamp_evento"),

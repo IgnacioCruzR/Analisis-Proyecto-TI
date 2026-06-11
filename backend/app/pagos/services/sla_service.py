@@ -94,7 +94,7 @@ def check_sla_and_alert(db: Session, uptime_pct: float, hours: int) -> bool:
         acknowledged=False,
     )
     db.add(alert)
-    db.flush()
+    db.commit()
     return True
 
 

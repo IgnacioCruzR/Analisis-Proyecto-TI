@@ -1,5 +1,5 @@
-from datetime import datetime, date
-from sqlalchemy import Column, String, DateTime, Date, Index
+from datetime import datetime, date, timezone
+from sqlalchemy import CheckConstraint, Column, String, DateTime, Date, Index
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.db.base import Base
@@ -28,11 +28,13 @@ class FactAlertas(Base):
     dias_abierta = Column(String(50), nullable=True)
     
     # Timestamp for DWH tracking
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (
+        CheckConstraint("prioridad IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')", name="ck_fact_alertas_prioridad"),
+        CheckConstraint("estado IN ('OPEN', 'RESOLVED', 'ACKNOWLEDGED')", name="ck_fact_alertas_estado"),
         Index("idx_fact_alertas_paciente_tipo", "paciente_dim_id", "tipo"),
         Index("idx_fact_alertas_prioridad_estado", "prioridad", "estado"),
         Index("idx_fact_alertas_creacion", "created_at"),

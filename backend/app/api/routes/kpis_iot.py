@@ -69,10 +69,12 @@ async def get_iot_kpis_endpoint(
 )
 async def get_iot_sensors_status(
     days: Optional[int] = Query(default=None, ge=1, le=365, description="Número de días (omitir para todos los datos)"),
+    limit: int = Query(default=100, ge=1, le=1000, description="Máximo de sensores a retornar"),
+    offset: int = Query(default=0, ge=0, description="Número de sensores a omitir (paginación)"),
     db: Session = Depends(get_db),
 ) -> SensorsStatusResponse:
     try:
-        status_data = get_sensors_status(db)
+        status_data = get_sensors_status(db, days=days, limit=limit, offset=offset)
         sensors_list = [
             SensorStatus(
                 sensor_id=s["sensor_id"],

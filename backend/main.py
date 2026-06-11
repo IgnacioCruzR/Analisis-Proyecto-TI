@@ -1,11 +1,16 @@
+import asyncio
 import os
+import uuid as _uuid
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import KeycloakUser, get_current_user, get_current_user_optional
 from app.api.rate_limit import require_rate_limit
+from app.api.routes.events import ETL_QUEUE, _run_etl, retry_stale_events
 from app.db import engine, Base
+from app.redis_client import redis_client
 # Importaciones de modelos para que SQLAlchemy los registre en Base.metadata antes
 # de llamar a create_all. El orden importa: raw primero, luego warehouse, luego pagos.
 from app.models.raw import RawEvent  # noqa: F401
@@ -40,12 +45,59 @@ from app.pagos.models import (  # noqa: F401
 )
 from app.api import events_router, inventory_router, kpis_router, analytics_router
 
-Base.metadata.create_all(bind=engine)
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+if _ENVIRONMENT == "development":
+    # En producción/staging, el schema se gestiona con: alembic upgrade head
+    Base.metadata.create_all(bind=engine)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async def _periodic_retry():
+        while True:
+            await asyncio.sleep(300)
+            try:
+                await asyncio.to_thread(retry_stale_events)
+            except Exception:
+                pass
+
+    async def _etl_consumer():
+        while True:
+            try:
+                item = await asyncio.to_thread(redis_client.blpop, ETL_QUEUE, 10)
+                if item:
+                    _, value = item
+                    event_id_str, source = value.split("|", 1)
+                    await asyncio.to_thread(_run_etl, _uuid.UUID(event_id_str), source)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                await asyncio.sleep(1)
+
+    retry_task = asyncio.create_task(_periodic_retry())
+    consumer_task = asyncio.create_task(_etl_consumer()) if redis_client is not None else None
+
+    yield
+
+    retry_task.cancel()
+    try:
+        await retry_task
+    except asyncio.CancelledError:
+        pass
+
+    if consumer_task is not None:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            pass
+
 
 app = FastAPI(
     title="Event Ingestion & Analytics API",
     description="Sistema de ingestión de eventos y análisis de KPIs para múltiples dominios (subscriptions, orders, iot, notifications)",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Orígenes permitidos (frontend Next.js). Configurable por env para producción.

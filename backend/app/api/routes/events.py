@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import ValidationError
@@ -10,6 +10,7 @@ from app.auth import get_current_user, KeycloakUser
 from app.db import get_db
 from app.db.session import SessionLocal
 from app.models.raw.raw_events import RawEvent
+from app.redis_client import redis_client
 from app.schemas import EventCreate, AcknowledgeResponse
 from app.schemas.inventory_event_schema import InventoryEventCreate
 from app.services import create_event
@@ -25,6 +26,8 @@ from app.etl.processors.notification_proccessor import process_notification_even
 from app.api.rate_limit import require_rate_limit
 
 logger = logging.getLogger(__name__)
+
+ETL_QUEUE = "etl_queue"
 
 router = APIRouter(
     prefix="/events",
@@ -52,6 +55,43 @@ _ETL_PROCESSORS = {
     "iot": process_iot_event,
     "notifications": process_notification_event,
 }
+
+
+def _enqueue_etl(event_id: uuid.UUID, source: str) -> bool:
+    """Pushes an ETL task to the Redis queue with atomic dedup via SET NX.
+
+    Returns True if enqueued, False if already claimed or Redis unavailable.
+    """
+    if redis_client is None:
+        return False
+    claimed = redis_client.set(f"etl:lock:{event_id}", "1", nx=True, ex=300)
+    if claimed:
+        redis_client.rpush(ETL_QUEUE, f"{event_id}|{source}")
+    return bool(claimed)
+
+
+def retry_stale_events() -> None:
+    """Reintenta el ETL para eventos stuck en processed=False por más de 5 minutos."""
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
+    db: Session = SessionLocal()
+    try:
+        stale = (
+            db.query(RawEvent)
+            .filter(RawEvent.processed == False, RawEvent.ingested_at < cutoff)
+            .limit(100)
+            .all()
+        )
+        if stale:
+            logger.info("retry_stale_events: %d eventos pendientes encontrados", len(stale))
+        for raw_event in stale:
+            if raw_event.source in _ETL_PROCESSORS:
+                if not _enqueue_etl(raw_event.event_id, raw_event.source):
+                    # Redis no disponible o ya en cola — procesar inline como fallback
+                    _run_etl(raw_event.event_id, raw_event.source)
+    except Exception:
+        logger.exception("retry_stale_events: error consultando eventos pendientes")
+    finally:
+        db.close()
 
 
 def _run_etl(event_id: uuid.UUID, source: str) -> None:
@@ -139,6 +179,8 @@ async def ingest_event(
             detail="Error interno del servidor",
         )
 
-    background_tasks.add_task(_run_etl, event_id=db_event.event_id, source=db_event.source)
+    if not _enqueue_etl(db_event.event_id, db_event.source):
+        # Redis no disponible en desarrollo — fallback a BackgroundTasks en-proceso
+        background_tasks.add_task(_run_etl, event_id=db_event.event_id, source=db_event.source)
 
     return AcknowledgeResponse(status="acknowledged", event_id=event_id)

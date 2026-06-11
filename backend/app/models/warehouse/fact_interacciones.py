@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Text
 
@@ -17,8 +17,8 @@ class FactInteraccion(Base):
     contenido = Column(Text, nullable=True)
     es_nota_interna = Column(Boolean, nullable=False, default=False)
 
-    creado_en = Column(DateTime, nullable=True, index=True)
-    ingested_at = Column(DateTime, default=datetime.utcnow, index=True)
+    creado_en = Column(DateTime(timezone=True), nullable=True, index=True)
+    ingested_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     __table_args__ = (
         Index("idx_fact_interacciones_ticket_creado", "ticket_id", "creado_en"),
