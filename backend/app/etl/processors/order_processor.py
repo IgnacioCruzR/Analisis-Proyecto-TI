@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.models import RawEvent, FactOrder
+
+logger = logging.getLogger(__name__)
 
 
 class OrderPayloadValidationError(Exception):
@@ -68,7 +71,7 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
         if existing:
             # Actualizar registro existente
             fact_order = existing
-            print(f"[ORDER-ETL] Actualizando orden {order_id}")
+            logger.info("ORDER-ETL actualizando orden %s", order_id)
         else:
             # Crear nuevo registro
             fact_order = FactOrder(
@@ -85,7 +88,7 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
                 updated_at=datetime.utcnow()
             )
             db.add(fact_order)
-            print(f"[ORDER-ETL] Creando nueva orden {order_id}")
+            logger.info("ORDER-ETL creando nueva orden %s", order_id)
         
         # 4. Mapear flags según event_type
         flags = _map_event_to_flags(raw_event.event_type)
@@ -121,16 +124,16 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
         db.add(fact_order)
         db.flush()
         
-        print(f"[ORDER-ETL] Evento {raw_event.event_type} procesado para orden {order_id}")
+        logger.info("ORDER-ETL evento %s procesado para orden %s", raw_event.event_type, order_id)
         
         return fact_order
     
     except OrderPayloadValidationError as e:
-        print(f"[ORDER-ETL] Error validación: {str(e)}")
+        logger.warning("ORDER-ETL error validación: %s", e)
         raise
-    
+
     except Exception as e:
-        print(f"[ORDER-ETL] Error procesando evento {raw_event.id}: {str(e)}")
+        logger.exception("ORDER-ETL error procesando evento %s", raw_event.id)
         raise
 
 
@@ -151,10 +154,10 @@ def process_orders_events(db: Session, limit: int = 1000) -> Dict[str, Any]:
         ).limit(limit).all()
         
         stats["total"] = len(unprocessed)
-        print(f"\n[ORDER-ETL] Iniciando procesamiento de {stats['total']} eventos\n")
-        
+        logger.info("ORDER-ETL iniciando procesamiento de %s eventos", stats['total'])
+
         if not unprocessed:
-            print("[ORDER-ETL] No hay eventos sin procesar")
+            logger.info("ORDER-ETL no hay eventos sin procesar")
             return stats
         
         # 2. Procesar cada evento
@@ -176,20 +179,19 @@ def process_orders_events(db: Session, limit: int = 1000) -> Dict[str, Any]:
                 db.add(raw_event)
             except Exception as e:
                 stats["errors"] += 1
-                print(f"[ORDER-ETL] Error: {str(e)}")
-        
+                logger.exception("ORDER-ETL error procesando evento en batch")
+
         # 3. Commit final
         db.commit()
-        
-        # 4. Mostrar resumen
-        print(f"\n[ORDER-ETL] === RESUMEN ===")
-        print(f"[ORDER-ETL] Total procesados: {stats['processed']}")
-        print(f"[ORDER-ETL] Errores: {stats['errors']}")
-        print(f"[ORDER-ETL] Tipos de eventos: {stats['event_types']}\n")
-        
+
+        logger.info(
+            "ORDER-ETL resumen: %s/%s procesados, %s errores, tipos: %s",
+            stats['processed'], stats['total'], stats['errors'], stats['event_types'],
+        )
+
         return stats
-    
+
     except Exception as e:
         db.rollback()
-        print(f"[ORDER-ETL] Error crítico: {str(e)}")
+        logger.exception("ORDER-ETL error crítico")
         raise

@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.models import RawEvent, FactIoT
+
+logger = logging.getLogger(__name__)
 
 
 class IoTPayloadValidationError(Exception):
@@ -86,7 +89,7 @@ def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
         if existing:
             # Actualizar registro existente
             fact_iot = existing
-            print(f"[IoT-ETL] Actualizando sensor {sensor_id}")
+            logger.info("IoT-ETL actualizando sensor %s", sensor_id)
         else:
             # Crear nuevo registro
             fact_iot = FactIoT(
@@ -103,7 +106,7 @@ def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
                 updated_at=datetime.utcnow()
             )
             db.add(fact_iot)
-            print(f"[IoT-ETL] Creando nuevo sensor {sensor_id}")
+            logger.info("IoT-ETL creando nuevo sensor %s", sensor_id)
         
         # 4. Actualizar datos según event_type
         if raw_event.event_type == "telemetry_received":
@@ -166,16 +169,16 @@ def process_iot_event(db: Session, raw_event: RawEvent) -> Optional[FactIoT]:
         db.add(fact_iot)
         db.flush()
         
-        print(f"[IoT-ETL] Evento {raw_event.event_type} procesado para sensor {sensor_id}")
+        logger.info("IoT-ETL evento %s procesado para sensor %s", raw_event.event_type, sensor_id)
         
         return fact_iot
     
     except IoTPayloadValidationError as e:
-        print(f"[IoT-ETL] Error validación: {str(e)}")
+        logger.warning("IoT-ETL error validación: %s", e)
         raise
-    
+
     except Exception as e:
-        print(f"[IoT-ETL] Error procesando evento {raw_event.id}: {str(e)}")
+        logger.exception("IoT-ETL error procesando evento %s", raw_event.id)
         raise
 
 
@@ -218,17 +221,17 @@ def process_iot_events(db: Session, limit: int = 1000) -> Dict[str, Any]:
                 
             except Exception as e:
                 stats["errors"] += 1
-                print(f"[IoT-ETL] Error procesando evento {raw_event.id}: {str(e)}")
+                logger.exception("IoT-ETL error procesando evento %s", raw_event.id)
                 db.rollback()
-        
+
         # 3. Commit de todos los cambios
         db.commit()
-        
-        print(f"[IoT-ETL] Procesamiento completado: {stats['processed']}/{stats['total']} eventos")
-        
+
+        logger.info("IoT-ETL procesamiento completado: %s/%s eventos", stats['processed'], stats['total'])
+
         return stats
-    
+
     except Exception as e:
-        print(f"[IoT-ETL] Error en batch processing: {str(e)}")
+        logger.exception("IoT-ETL error en batch processing")
         db.rollback()
         raise

@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 from typing import Callable, Tuple, Type
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.etl.processors import (
     IncidentProcessingError,
@@ -94,9 +97,12 @@ def run_etl(db: Session, dry_run: bool = False) -> dict:
 
         if stats["errors"]:
             for error in stats["errors"]:
-                print(f"   - {error}")
+                logger.warning("ETL error: %s", error)
 
-        print("=" * 70 + "\n")
+        logger.info(
+            "ETL run completado en %.2f s: %s exitosos, %s fallidos de %s eventos",
+            stats["duration_seconds"], stats["successful"], stats["failed"], stats["total_events"],
+        )
 
         return stats
 

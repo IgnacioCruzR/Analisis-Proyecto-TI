@@ -3,10 +3,13 @@ KPIs para cálculos analíticos del dominio IoT.
 
 Contiene funciones para calcular KPIs desde fact_iot y raw_events.
 """
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date, Integer, case
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple, Optional
+
+logger = logging.getLogger(__name__)
 
 from app.models import FactIoT, RawEvent
 
@@ -380,13 +383,13 @@ def process_unprocessed_iot_events(db: Session, limit: int = 1000) -> Dict[str, 
                 
             except Exception as e:
                 stats["errors"] += 1
-                print(f"[IoT-KPI] Error procesando evento {raw_event.id}: {str(e)}")
+                logger.exception("IoT-KPI error procesando evento %s", raw_event.id)
                 db.rollback()
-        
+
         db.commit()
-        
+
     except Exception as e:
-        print(f"[IoT-KPI] Error en batch processing: {str(e)}")
+        logger.exception("IoT-KPI error en batch processing")
         db.rollback()
         raise
     

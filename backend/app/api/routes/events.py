@@ -68,10 +68,10 @@ def _run_etl(event_id: uuid.UUID, source: str) -> None:
         processor(db, raw_event)
         raw_event.processed = True
         db.commit()
-        print(f"[ETL] {source}/{raw_event.event_type} OK — event_id={event_id}")
+        logger.info("ETL %s/%s OK — event_id=%s", source, raw_event.event_type, event_id)
     except Exception as exc:
         db.rollback()
-        print(f"[ETL-ERROR] {source} event_id={event_id}: {exc}")
+        logger.exception("ETL %s event_id=%s", source, event_id)
     finally:
         db.close()
 
@@ -162,10 +162,10 @@ async def ingest_event(
                 db.flush()
                 db_event.processed = True
                 db.commit()
-                print(f"✅ [AUTO-ETL] Evento intento_pago procesado: {fact.transaction_id}")
+                logger.info("AUTO-ETL intento_pago procesado: %s", fact.transaction_id)
             except Exception as etl_error:
                 db.rollback()
-                print(f"⚠️  [AUTO-ETL-PAYMENTS] Error on intento_pago: {str(etl_error)}")
+                logger.exception("AUTO-ETL-PAYMENTS error on intento_pago")
 
         elif db_event.event_type == "confirmar_pago":
             try:
@@ -193,10 +193,10 @@ async def ingest_event(
                 db.flush()
                 db_event.processed = True
                 db.commit()
-                print(f"✅ [AUTO-ETL] Evento confirmar_pago procesado: {fact.transaction_id}")
+                logger.info("AUTO-ETL confirmar_pago procesado: %s", fact.transaction_id)
             except Exception as etl_error:
                 db.rollback()
-                print(f"⚠️  [AUTO-ETL-PAYMENTS] Error on confirmar_pago: {str(etl_error)}")
+                logger.exception("AUTO-ETL-PAYMENTS error on confirmar_pago")
 
         elif db_event.event_type == "cierre_diario_completado":
             try:
@@ -211,21 +211,21 @@ async def ingest_event(
                 cierre_record = process_cierre_diario(db, cierre.model_dump())
                 db_event.processed = True
                 db.commit()
-                print(f"✅ [AUTO-ETL] Cierre diario procesado: {cierre_record.id} estado_id={cierre_record.estado_id}")
+                logger.info("AUTO-ETL cierre diario procesado: id=%s estado_id=%s", cierre_record.id, cierre_record.estado_id)
             except Exception as etl_error:
                 db.rollback()
-                print(f"⚠️  [AUTO-ETL-CIERRE] Error: {str(etl_error)}")
+                logger.exception("AUTO-ETL-CIERRE error")
 
             try:
                 metrics = check_payments_uptime(db)
                 if metrics.get("alert_id"):
                     db.commit()
-                    print(f"🔔 [MONITOR] Alert created id={metrics.get('alert_id')}")
+                    logger.info("MONITOR alert created id=%s", metrics.get("alert_id"))
                 else:
                     db.rollback()
             except Exception as me:
                 db.rollback()
-                print(f"⚠️ [MONITOR] Error running monitoring: {str(me)}")
+                logger.exception("MONITOR error running monitoring")
         else:
             db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown payment event_type")
