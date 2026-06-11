@@ -46,4 +46,5 @@ def get_db() -> Session:  # ty:ignore[invalid-return-type]
     try:
         yield db
     finally:
+        db.rollback()
         db.close()
