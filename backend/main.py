@@ -82,11 +82,6 @@ _allowed_origins = (
     if _use_wildcard
     else [o.strip() for o in _raw_origins.split(",") if o.strip()]
 )
-_allowed_origins = [
-    o.strip()
-    for o in os.getenv("CORS_ALLOWED_ORIGINS", _default_origins).split(",")
-    if o.strip()
-]
 
 app.add_middleware(
     CORSMiddleware,
