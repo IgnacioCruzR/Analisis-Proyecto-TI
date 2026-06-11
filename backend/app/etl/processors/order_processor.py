@@ -58,7 +58,7 @@ def process_order_event(db: Session, raw_event: RawEvent) -> Optional[FactOrder]
         if payload_created_at:
             try:
                 created_at = datetime.fromisoformat(payload_created_at.replace('Z', '+00:00'))
-            except:
+            except ValueError:
                 created_at = datetime.now(tz=timezone.utc)
         else:
             created_at = datetime.now(tz=timezone.utc)

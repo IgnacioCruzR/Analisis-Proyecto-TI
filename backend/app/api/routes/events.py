@@ -166,6 +166,10 @@ async def ingest_event(
             except Exception as etl_error:
                 db.rollback()
                 logger.exception("AUTO-ETL-PAYMENTS error on intento_pago")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error procesando intento de pago",
+                )
 
         elif db_event.event_type == "confirmar_pago":
             try:
@@ -197,6 +201,10 @@ async def ingest_event(
             except Exception as etl_error:
                 db.rollback()
                 logger.exception("AUTO-ETL-PAYMENTS error on confirmar_pago")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error procesando confirmación de pago",
+                )
 
         elif db_event.event_type == "cierre_diario_completado":
             try:
@@ -215,6 +223,10 @@ async def ingest_event(
             except Exception as etl_error:
                 db.rollback()
                 logger.exception("AUTO-ETL-CIERRE error")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error procesando cierre diario",
+                )
 
             try:
                 metrics = check_payments_uptime(db)
