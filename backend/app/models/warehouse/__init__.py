@@ -1,6 +1,13 @@
 from .fact_subscription import FactSubscription
 from .fact_orders import FactOrder
 from .fact_incidents import FactIncident
+from .fact_tickets import FactTicket
+from .dim_clientes_crm import DimClienteCRM
+from .fact_interacciones import FactInteraccion
+from .fact_ticket_articulos import FactTicketArticulo
+from .fact_sla_violaciones import FactSlaViolacion
+from .fact_inventory_movements import FactInventoryMovement
+from .fact_inventory_alerts import FactInventoryAlert
 from .fact_iot import FactIoT
 from .fact_notifications import FactNotifications
 
@@ -35,6 +42,13 @@ __all__ = [
     "FactSubscription",
     "FactOrder",
     "FactIncident",
+    "FactTicket",
+    "DimClienteCRM",
+    "FactInteraccion",
+    "FactTicketArticulo",
+    "FactSlaViolacion",
+    "FactInventoryMovement",
+    "FactInventoryAlert",
     "DimUsuarios",
     "DimProfesionales",
     "DimZonas",

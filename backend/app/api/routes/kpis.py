@@ -73,6 +73,20 @@ from app.services.overview_analytics_service import (
     get_recent_activities,
     get_service_statuses,
 )
+from app.services.crm_analytics_service import (
+    get_crm_kpis,
+    get_crm_timeline,
+    get_recent_tickets,
+    get_sla_summary,
+)
+from app.schemas.crm_kpi_schema import (
+    CRMKPIsResponse,
+    CRMTimelineResponse,
+    CRMTimelinePoint,
+    CRMTicketsResponse,
+    CRMTicketRow,
+    CRMSLASummary,
+)
 from app.schemas.overview_kpi_schema import (
     ActivityRow,
     AlertRow,
@@ -101,11 +115,6 @@ ORDERS_ROLES = ["admin", "analista", "orders"]
 SALUD_ROLES = ["admin", "analista", "salud"]
 INCIDENTS_ROLES = ["admin", "analista", "incidents"]
 OVERVIEW_ROLES = ["admin", "analista"]
-IOT_ROLES = ["admin", "analista", "iot"]
-NOTIF_ROLES = ["admin", "analista", "notifications"]
-PAYMENTS_ROLES = ["admin", "analista", "payments"]
-INVENTORY_ROLES = ["admin", "analista", "inventory"]
-CRM_ROLES = ["admin", "analista", "crm"]
 
 
 router = APIRouter(
@@ -778,12 +787,101 @@ async def get_overview_alerts_endpoint(
 
 
 # ================================================================
+# CRM — KPIs desde warehouse CRM
+# ================================================================
+
+@router.get(
+    "/crm/kpis",
+    response_model=CRMKPIsResponse,
+    summary="KPIs del módulo CRM",
+    description="Clientes, tickets abiertos, tiempo de respuesta promedio, CSAT, mensajes y tasa de resolución",
+)
+async def get_crm_kpis_endpoint(db: Session = Depends(get_db)) -> CRMKPIsResponse:
+    try:
+        return CRMKPIsResponse(**get_crm_kpis(db))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error KPIs CRM: {str(e)}",
+        )
+
+
+@router.get(
+    "/crm/timeline",
+    response_model=CRMTimelineResponse,
+    summary="Volumen de tickets CRM por día",
+    description="Tickets abiertos y resueltos por día en los últimos N días",
+)
+async def get_crm_timeline_endpoint(
+    days: int = 14,
+    db: Session = Depends(get_db),
+) -> CRMTimelineResponse:
+    try:
+        if days < 1 or days > 90:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="days debe estar entre 1 y 90",
+            )
+        points = get_crm_timeline(db, days=days)
+        return CRMTimelineResponse(days=days, points=[CRMTimelinePoint(**p) for p in points])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error timeline CRM: {str(e)}",
+        )
+
+
+@router.get(
+    "/crm/tickets",
+    response_model=CRMTicketsResponse,
+    summary="Tickets recientes de CRM",
+    description="Lista de tickets más recientes ordenados por fecha de apertura",
+)
+async def get_crm_tickets_endpoint(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+) -> CRMTicketsResponse:
+    try:
+        if limit < 1 or limit > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="limit debe estar entre 1 y 100",
+            )
+        tickets = get_recent_tickets(db, limit=limit)
+        return CRMTicketsResponse(tickets=[CRMTicketRow(**t) for t in tickets])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error tickets CRM: {str(e)}",
+        )
+
+
+@router.get(
+    "/crm/sla",
+    response_model=CRMSLASummary,
+    summary="Resumen de SLA del módulo CRM",
+    description="Violaciones de SLA y tasa de cumplimiento",
+)
+async def get_crm_sla_endpoint(db: Session = Depends(get_db)) -> CRMSLASummary:
+    try:
+        return CRMSLASummary(**get_sla_summary(db))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error SLA CRM: {str(e)}",
+        )
+
+
+# ================================================================
 # IoT — KPIs desde fact_iot y raw_events
 # ================================================================
 
 @router.get(
     "/iot/kpis",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     response_model=SensorKPIs,
     summary="KPIs consolidados de sensores IoT",
     description="Retorna todos los KPIs principales. Algunos son real-time (siempre actual), otros pueden filtrarse por días"
@@ -798,9 +896,7 @@ async def get_iot_kpis_endpoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Days must be between 1 and 365"
             )
-        
         kpis = get_all_iot_kpis(db, days)
-        
         return SensorKPIs(
             total_sensors=kpis["total_sensors"],
             online_sensors=kpis["online_sensors"],
@@ -812,7 +908,6 @@ async def get_iot_kpis_endpoint(
             anomalies_detected=kpis["anomalies_detected"],
             avg_processing_latency_ms=kpis["avg_processing_latency_ms"],
         )
-    
     except HTTPException:
         raise
     except Exception as e:
@@ -824,7 +919,6 @@ async def get_iot_kpis_endpoint(
 
 @router.get(
     "/iot/status",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     response_model=SensorsStatusResponse,
     summary="Estado actual de sensores",
     description="Obtiene estado actual de todos los sensores IoT (online, battery, última lectura, etc). El parámetro days es opcional e informativo"
@@ -839,9 +933,7 @@ async def get_iot_sensors_status(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Days must be between 1 and 365"
             )
-        
         status_data = get_sensors_status(db)
-        
         sensors_list = [
             SensorStatus(
                 sensor_id=sensor["sensor_id"],
@@ -856,17 +948,14 @@ async def get_iot_sensors_status(
             )
             for sensor in status_data
         ]
-        
         online_count = sum(1 for s in sensors_list if s.is_online)
         offline_count = sum(1 for s in sensors_list if not s.is_online)
-        
         return SensorsStatusResponse(
             total_sensors=len(sensors_list),
             online_count=online_count,
             offline_count=offline_count,
             sensors=sensors_list
         )
-    
     except HTTPException:
         raise
     except Exception as e:
@@ -878,7 +967,6 @@ async def get_iot_sensors_status(
 
 @router.get(
     "/iot/by-type",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     response_model=SensorsByTypeResponse,
     summary="Distribución de sensores por tipo",
     description="Obtiene distribución y estado actual de sensores agrupados por tipo. El parámetro days es opcional e informativo"
@@ -926,7 +1014,6 @@ async def get_iot_sensors_by_type(
 
 @router.get(
     "/iot/events",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     response_model=EventsResponse,
     summary="Eventos recientes de IoT",
     description="Obtiene eventos/alertas recientes desde raw_events (sensor_offline, low_battery, anomaly_detected, etc)"
@@ -987,7 +1074,6 @@ async def get_iot_events_endpoint(
 
 @router.get(
     "/iot/timeline",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     response_model=IoTTimelineResponse,
     summary="Línea de tiempo de IoT",
     description="Obtiene timeline de actividad IoT agrupada por fecha (últimos N días)"
@@ -1051,7 +1137,6 @@ async def get_iot_timeline_endpoint(
 
 @router.get(
     "/iot/health",
-    dependencies=[Depends(require_any_role(IOT_ROLES))],
     summary="Health check de analítica IoT",
     description="Verifica disponibilidad del servicio de analítica IoT"
 )
@@ -1075,7 +1160,6 @@ async def iot_health_check(db: Session = Depends(get_db)):
 
 @router.get(
     "/notifications/kpis",
-    dependencies=[Depends(require_any_role(NOTIF_ROLES))],
     response_model=NotificationKPIs,
     summary="KPIs consolidados de notificaciones",
     description="Tasa de fallos, uptime del servicio y backpressure ratio"
@@ -1096,7 +1180,6 @@ async def get_notifications_kpis_endpoint(
 
 @router.get(
     "/notifications/channels",
-    dependencies=[Depends(require_any_role(NOTIF_ROLES))],
     response_model=NotificationChannelsResponse,
     summary="Métricas por canal",
     description="Tasa de entrega y fallos desglosada por canal (sms, email, push)"
@@ -1123,7 +1206,6 @@ async def get_notifications_channels_endpoint(
 
 @router.get(
     "/notifications/status",
-    dependencies=[Depends(require_any_role(NOTIF_ROLES))],
     response_model=NotificationStatusResponse,
     summary="Distribución por estado",
     description="Conteo de notificaciones en estado enviado, entregado y fallido"
@@ -1149,7 +1231,6 @@ async def get_notifications_status_endpoint(
 
 @router.get(
     "/notifications/timeline",
-    dependencies=[Depends(require_any_role(NOTIF_ROLES))],
     response_model=NotificationTimelineResponse,
     summary="Línea de tiempo de notificaciones",
     description="Volumen diario de notificaciones enviadas, entregadas y fallidas"
