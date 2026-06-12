@@ -1,10 +1,11 @@
+import logging
 import os
-import sys
 
 import redis as redis_lib
 
 _REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-_ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+logger = logging.getLogger(__name__)
 
 redis_client: redis_lib.Redis | None = None
 
@@ -13,10 +14,4 @@ try:
     _r.ping()
     redis_client = _r
 except Exception:
-    if _ENVIRONMENT != "development":
-        print(
-            f"FATAL: Redis no disponible en {_REDIS_URL}. Se requiere Redis en producción.",
-            file=sys.stderr,
-            flush=True,
-        )
-        sys.exit(1)
+    logger.warning("Redis no disponible en %s — ETL usará fallback síncrono, cache KPI desactivado", _REDIS_URL)
