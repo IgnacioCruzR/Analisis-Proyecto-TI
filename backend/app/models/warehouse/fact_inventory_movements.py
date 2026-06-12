@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,11 +21,11 @@ class FactInventoryMovement(Base):
     # Campos opcionales según el event_type
     reservation_id = Column(String(100), nullable=True)
     order_id = Column(String(100), nullable=True, index=True)
-    expires_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
 
     raw_event_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    movement_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    ingested_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    movement_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    ingested_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("idx_fim_sku_event_ts", "sku_id", "event_type", "movement_at"),

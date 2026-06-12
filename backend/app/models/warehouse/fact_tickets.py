@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String
+from sqlalchemy import Boolean, Column, CheckConstraint, DateTime, Float, Index, Integer, String
 
 from app.db.base import Base
 
@@ -23,17 +23,20 @@ class FactTicket(Base):
     pedido_id_ref = Column(String(100), nullable=True)
     suscripcion_id_red = Column(String(100), nullable=True)
 
-    fecha_vencimiento_sla = Column(DateTime, nullable=True)
+    fecha_vencimiento_sla = Column(DateTime(timezone=True), nullable=True)
     resolution_time_hours = Column(Float, nullable=True)
     within_sla = Column(Boolean, nullable=True)
     csat_score = Column(Integer, nullable=True)                       # 1–5
 
-    opened_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
-    resolved_at = Column(DateTime, nullable=True)
-    closed_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    opened_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
+        CheckConstraint("estado IN ('Abierto', 'Progreso', 'Resuelto', 'Cerrado')", name="ck_fact_tickets_estado"),
+        CheckConstraint("prioridad IN ('Baja', 'Media', 'Alta', 'Crítica')", name="ck_fact_tickets_prioridad"),
+        CheckConstraint("canal IN ('Chat', 'Email', 'Teléfono', 'App') OR canal IS NULL", name="ck_fact_tickets_canal"),
         Index("idx_fact_tickets_estado_prioridad", "estado", "prioridad"),
         Index("idx_fact_tickets_source_opened", "source_project", "opened_at"),
     )

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from app.db.base import Base
@@ -21,7 +21,7 @@ class FactIoT(Base):
     # Core Metrics
     battery_level = Column(Float, nullable=True)  # percentage 0-100
     signal_strength = Column(Float, nullable=True)  # RSSI or similar
-    last_data_received_at = Column(DateTime, nullable=True)
+    last_data_received_at = Column(DateTime(timezone=True), nullable=True)
 
     # Sensor-specific data (flexible, varies by sensor_type)
     temperature = Column(Float, nullable=True)
@@ -38,8 +38,8 @@ class FactIoT(Base):
     extra_data = Column(JSONB, nullable=True)  # For any additional sensor-specific fields
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Composite Indexes
     __table_args__ = (

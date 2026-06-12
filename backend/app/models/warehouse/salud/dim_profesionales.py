@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Boolean, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -25,13 +25,13 @@ class DimProfesionales(Base):
     activo = Column(Boolean, default=True, index=True)
     
     # SCD Type 2 tracking
-    fecha_inicio = Column(DateTime, default=datetime.utcnow, nullable=False)
-    fecha_fin = Column(DateTime, nullable=True)
+    fecha_inicio = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    fecha_fin = Column(DateTime(timezone=True), nullable=True)
     es_actual = Column(Boolean, default=True, index=True)
-    
+
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (

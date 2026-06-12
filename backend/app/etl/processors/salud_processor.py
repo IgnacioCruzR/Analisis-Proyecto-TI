@@ -5,7 +5,7 @@ Resuelve claves de negocio a surrogate ids (*_dim_id) en facts.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time as time_type
+from datetime import date, datetime, time as time_type, timezone
 from typing import Any, Callable, Dict, Optional
 import uuid as uuid_pkg
 
@@ -168,7 +168,7 @@ def _handle_usuario_upsert(db: Session, p: Dict[str, Any]) -> DimUsuarios:
         .filter(and_(DimUsuarios.usuario_id == uid, DimUsuarios.es_actual == True))
         .first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.nombres = nombres
         row.apellidos = apellidos
@@ -210,7 +210,7 @@ def _handle_paciente_upsert(db: Session, p: Dict[str, Any]) -> DimPacientes:
         .filter(and_(DimPacientes.paciente_id == pid, DimPacientes.es_actual == True))
         .first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     fn = p.get("fecha_nacimiento")
     fecha_nac = _parse_date("fecha_nacimiento", fn) if fn else None
 
@@ -261,7 +261,7 @@ def _handle_profesional_upsert(db: Session, p: Dict[str, Any]) -> DimProfesional
         .filter(and_(DimProfesionales.profesional_id == prid, DimProfesionales.es_actual == True))
         .first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.usuario_id = usuario_bk
         row.nombres = nombres
@@ -300,7 +300,7 @@ def _handle_zona_upsert(db: Session, p: Dict[str, Any]) -> DimZonas:
     row = (
         db.query(DimZonas).filter(and_(DimZonas.zona_id == zid, DimZonas.es_actual == True)).first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.nombre = nombre
         row.descripcion = p.get("descripcion")
@@ -339,7 +339,7 @@ def _handle_especialidad_upsert(db: Session, p: Dict[str, Any]) -> DimEspecialid
         .filter(and_(DimEspecialidades.especialidad_id == eid, DimEspecialidades.es_actual == True))
         .first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.nombre = nombre
         row.descripcion = p.get("descripcion")
@@ -390,7 +390,7 @@ def _handle_visita_upsert(db: Session, p: Dict[str, Any]) -> FactVisitas:
     duracion_minutos, retraso_minutos = _calc_duracion_retraso(hora_prog, fecha_inicio, fecha_fin)
 
     row = db.query(FactVisitas).filter(FactVisitas.visita_id == visita_bk).first()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.paciente_dim_id = paciente_dim.id
         row.profesional_dim_id = prof_dim.id
@@ -441,7 +441,7 @@ def _handle_visita_inicio(db: Session, p: Dict[str, Any]) -> FactVisitas:
     row.duracion_minutos, row.retraso_minutos = _calc_duracion_retraso(
         row.hora_programada, row.fecha_inicio_real, row.fecha_fin_real
     )
-    row.updated_at = datetime.utcnow()
+    row.updated_at = datetime.now(tz=timezone.utc)
     return row
 
 
@@ -461,7 +461,7 @@ def _handle_visita_fin(db: Session, p: Dict[str, Any]) -> FactVisitas:
     row.duracion_minutos, row.retraso_minutos = _calc_duracion_retraso(
         row.hora_programada, row.fecha_inicio_real, row.fecha_fin_real
     )
-    row.updated_at = datetime.utcnow()
+    row.updated_at = datetime.now(tz=timezone.utc)
     return row
 
 
@@ -481,7 +481,7 @@ def _handle_alerta_upsert(db: Session, p: Dict[str, Any]) -> FactAlertas:
             visita_dim_id = fv.id
 
     row = db.query(FactAlertas).filter(FactAlertas.alerta_id == aid).first()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.paciente_dim_id = paciente_dim.id
         row.visita_dim_id = visita_dim_id
@@ -540,7 +540,7 @@ def _handle_ficha_upsert(db: Session, p: Dict[str, Any]) -> FactFichasClinicas:
     cant_adj = str(p.get("cantidad_adjuntos", "0"))[:10]
 
     row = db.query(FactFichasClinicas).filter(FactFichasClinicas.ficha_id == fid).first()
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     if row:
         row.visita_dim_id = fv.id
         row.estado = estado[:30]

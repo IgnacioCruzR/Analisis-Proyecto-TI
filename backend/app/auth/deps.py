@@ -32,7 +32,19 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .keycloak import KeycloakAuthError, decode_token, extract_roles
 
 
-_DISABLE_AUTH = "true"
+_DISABLE_AUTH = os.getenv("DISABLE_AUTH", "false").lower() == "true"
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
+_SAFE_ENVS = {"development", "test"}
+if _DISABLE_AUTH and _ENVIRONMENT not in _SAFE_ENVS:
+    import sys
+    print(
+        f"FATAL: DISABLE_AUTH=true no está permitido en ENVIRONMENT={_ENVIRONMENT!r}. "
+        "Solo se permite en 'development' o 'test'. "
+        "Elimine DISABLE_AUTH del entorno.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 _DUMMY_USER_CLAIMS = {
     "sub": "dummy-sub",

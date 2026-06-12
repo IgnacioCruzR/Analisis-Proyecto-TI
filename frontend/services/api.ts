@@ -7,7 +7,20 @@ const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(
   "",
 );
 
-// Helper function for API calls (ready for real endpoints)
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly path: string,
+  ) {
+    super(`[api] ${status} ${path}`);
+    this.name = "ApiError";
+  }
+}
+
+// When API_BASE_URL is not set, returns fallback (offline / local dev without backend).
+// When API_BASE_URL is configured, throws ApiError on any non-OK response or network
+// failure so callers (SWR hooks, try/catch) can surface the error to the user instead
+// of silently showing stale mock data.
 async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
   if (!API_BASE_URL) {
     return fallback;
@@ -24,27 +37,16 @@ async function fetchAPI<T>(endpoint: string, fallback: T): Promise<T> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${path}`, { headers });
-    if (!response.ok) {
-      // 401 (sin token) y 403 (sin rol) son resultados legitimos del guard de
-      // backend. No son "errores" desde la perspectiva del usuario, son falta
-      // de permiso. No spameamos warn ni mostramos mock data porque ocultaria
-      // el problema real al developer.
-      if (response.status === 401 || response.status === 403) {
-        console.info(`[api] ${response.status} ${path} (sin permiso)`);
-      } else {
-        console.warn(`[api] Falla ${response.status} en ${path}, usando mock`);
-      }
-      return fallback;
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      console.info(`[api] ${response.status} ${path} (sin permiso)`);
+    } else {
+      console.error(`[api] Error ${response.status} en ${path}`);
     }
-    return response.json();
-  } catch (err) {
-    // Errores de red (backend caido, CORS, etc.). Caemos a mock para no
-    // romper la UI cuando se trabaja offline / sin backend.
-    console.warn(`[api] Network error en ${path}, usando mock:`, err);
-    return fallback;
+    throw new ApiError(response.status, path);
   }
+  return response.json();
 }
 
 // Orders API
@@ -144,12 +146,6 @@ export const paymentsAPI = {
     ),
 };
 
-// Logistics API
-export const logisticsAPI = {
-  getKPIs: () => fetchAPI("/analytics/logistics/kpis", mockData.logisticsKPIs),
-  getRoutes: () => fetchAPI("/analytics/logistics/routes", mockData.routes),
-};
-
 // Overview API
 export const overviewAPI = {
   getGlobalKPIs: () => fetchAPI("/kpis/overview/kpis", mockData.globalKPIs),
@@ -183,17 +179,17 @@ export const inventoryAPI = {
     ),
   getLowStockItems: () =>
     fetchAPI(
-      "/products/thresholds?below_threshold=true",
+      "/inventory/products/thresholds?below_threshold=true",
       mockData.lowStockItems,
     ),
   getLocationsCatalog: (locationType?: string) =>
     fetchAPI(
-      `/locations/catalog${locationType ? `?location_type=${locationType}` : ""}`,
+      `/inventory/locations/catalog${locationType ? `?location_type=${locationType}` : ""}`,
       mockData.locationsCatalog,
     ),
   getProductsThresholds: (belowThreshold?: boolean) =>
     fetchAPI(
-      `/products/thresholds${belowThreshold !== undefined ? `?below_threshold=${belowThreshold}` : ""}`,
+      `/inventory/products/thresholds${belowThreshold !== undefined ? `?below_threshold=${belowThreshold}` : ""}`,
       mockData.productsThresholds,
     ),
 };

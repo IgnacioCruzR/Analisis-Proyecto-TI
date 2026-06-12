@@ -8,6 +8,8 @@ en caliente: solo la primera vez o cuando rotan las claves.
 from __future__ import annotations
 
 import os
+import sys
+import threading
 import time
 from typing import Any
 
@@ -18,6 +20,16 @@ from jose.exceptions import JWTError
 
 KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://localhost:8080").rstrip("/")
 KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "sistema-centralizado")
+
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+if _ENVIRONMENT != "development" and KEYCLOAK_URL.startswith("http://"):
+    print(
+        f"FATAL: KEYCLOAK_URL usa HTTP ({KEYCLOAK_URL}) en entorno '{_ENVIRONMENT}'. "
+        "Configure KEYCLOAK_URL con HTTPS para proteger el descubrimiento de JWKS.",
+        file=sys.stderr,
+        flush=True,
+    )
+    sys.exit(1)
 # Audiencia esperada en el token. Keycloak por defecto pone "account".
 KEYCLOAK_AUDIENCE = os.getenv("KEYCLOAK_AUDIENCE", "account")
 # Refrescar el JWKS cada N segundos (rota cuando admin cambia las claves).
@@ -32,27 +44,29 @@ class KeycloakAuthError(Exception):
 
 
 _jwks_cache: dict[str, Any] = {"keys": None, "fetched_at": 0.0}
+_jwks_lock = threading.Lock()
 
 
 def _get_jwks() -> dict[str, Any]:
     now = time.time()
-    if (
-        _jwks_cache["keys"] is not None
-        and now - _jwks_cache["fetched_at"] < JWKS_CACHE_TTL
-    ):
+    with _jwks_lock:
+        if (
+            _jwks_cache["keys"] is not None
+            and now - _jwks_cache["fetched_at"] < JWKS_CACHE_TTL
+        ):
+            return _jwks_cache["keys"]
+
+        try:
+            resp = httpx.get(JWKS_URL, timeout=5.0)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise KeycloakAuthError(
+                f"No se pudo obtener JWKS de Keycloak en {JWKS_URL}: {exc}"
+            ) from exc
+
+        _jwks_cache["keys"] = resp.json()
+        _jwks_cache["fetched_at"] = now
         return _jwks_cache["keys"]
-
-    try:
-        resp = httpx.get(JWKS_URL, timeout=5.0)
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise KeycloakAuthError(
-            f"No se pudo obtener JWKS de Keycloak en {JWKS_URL}: {exc}"
-        ) from exc
-
-    _jwks_cache["keys"] = resp.json()
-    _jwks_cache["fetched_at"] = now
-    return _jwks_cache["keys"]
 
 
 def _find_key(kid: str) -> dict[str, Any] | None:
@@ -62,7 +76,8 @@ def _find_key(kid: str) -> dict[str, Any] | None:
             return key
     # Si no encontramos el kid puede ser una clave nueva: invalidamos cache y
     # reintentamos una sola vez.
-    _jwks_cache["fetched_at"] = 0.0
+    with _jwks_lock:
+        _jwks_cache["fetched_at"] = 0.0
     jwks = _get_jwks()
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
@@ -92,10 +107,6 @@ def decode_token(token: str) -> dict[str, Any]:
             algorithms=[key.get("alg", "RS256")],
             audience=KEYCLOAK_AUDIENCE,
             issuer=ISSUER,
-            options={"verify_aud": False},
-            # Nota: desactivamos verify_aud porque Keycloak no siempre incluye
-            # el clientId en `aud`. Validamos issuer (que ya identifica al
-            # realm) y verificamos `azp` aparte si se necesita.
         )
     except JWTError as exc:
         raise KeycloakAuthError(f"Token inválido: {exc}") from exc

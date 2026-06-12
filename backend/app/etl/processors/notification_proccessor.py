@@ -1,8 +1,11 @@
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from app.models import RawEvent, FactNotifications
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationPayloadValidationError(Exception):
@@ -77,14 +80,14 @@ def process_notification_event(
             # Siempre crea un registro nuevo (es el primer evento del ciclo)
             if fact:
                 # Si por alguna razón ya existe, actualizar en vez de duplicar
-                print(f"[Notifications-ETL] Notificación {id_notificacion} ya existe, actualizando")
+                logger.info("Notifications-ETL notificación %s ya existe, actualizando", id_notificacion)
             else:
                 fact = FactNotifications(
                     id_notificacion=id_notificacion,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(tz=timezone.utc),
                 )
                 db.add(fact)
-                print(f"[Notifications-ETL] Creando notificación {id_notificacion}")
+                logger.info("Notifications-ETL creando notificación %s", id_notificacion)
 
             fact.id_api_key            = payload.get("id_api_key")
             fact.canal_usado         = payload.get("canal_usado")
@@ -104,7 +107,7 @@ def process_notification_event(
                     f"No existe notificación {id_notificacion} para marcar como entregada"
                 )
             fact.estado        = "entregado"
-            fact.fecha_entrega = _parse_timestamp(payload.get("timestamp")) or datetime.utcnow()
+            fact.fecha_entrega = _parse_timestamp(payload.get("timestamp")) or datetime.now(tz=timezone.utc)
 
         elif raw_event.event_type == "fallback_activado":
             if not fact:
@@ -125,21 +128,21 @@ def process_notification_event(
             fact.intentos = payload.get("intentos") or (fact.intentos or 1) + 1
 
         # 5. Actualizar timestamp
-        fact.updated_at = datetime.utcnow()
+        fact.updated_at = datetime.now(tz=timezone.utc)
 
         db.add(fact)
         db.flush()
 
-        print(f"[Notifications-ETL] Evento '{raw_event.event_type}' procesado para {id_notificacion}")
+        logger.info("Notifications-ETL evento '%s' procesado para %s", raw_event.event_type, id_notificacion)
 
         return fact
 
     except NotificationPayloadValidationError as e:
-        print(f"[Notifications-ETL] Error de validación: {str(e)}")
+        logger.warning("Notifications-ETL error de validación: %s", e)
         raise
 
     except Exception as e:
-        print(f"[Notifications-ETL] Error procesando evento {raw_event.id}: {str(e)}")
+        logger.exception("Notifications-ETL error procesando evento %s", raw_event.id)
         raise
 
 
@@ -184,19 +187,19 @@ def process_notification_events(db: Session, limit: int = 1000) -> Dict[str, Any
 
             except Exception as e:
                 stats["errors"] += 1
-                print(f"[Notifications-ETL] Error procesando evento {raw_event.id}: {str(e)}")
+                logger.exception("Notifications-ETL error procesando evento %s", raw_event.id)
                 db.rollback()
 
         db.commit()
 
-        print(
-            f"[Notifications-ETL] Procesamiento completado: "
-            f"{stats['processed']}/{stats['total']} eventos"
+        logger.info(
+            "Notifications-ETL procesamiento completado: %s/%s eventos",
+            stats['processed'], stats['total'],
         )
 
         return stats
 
     except Exception as e:
-        print(f"[Notifications-ETL] Error en batch processing: {str(e)}")
+        logger.exception("Notifications-ETL error en batch processing")
         db.rollback()
         raise

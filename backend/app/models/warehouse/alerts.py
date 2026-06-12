@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy import JSON
 
@@ -9,7 +9,7 @@ class PriorityAlert(Base):
     __tablename__ = "priority_alerts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     alert_type = Column(String(100), nullable=False, index=True)
     severity = Column(String(50), nullable=False)
     message = Column(String(1000), nullable=False)

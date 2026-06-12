@@ -8,7 +8,7 @@ payments, logistics); para esos KPIs reporta 0 o derivados.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func
@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models import FactIncident, FactOrder, FactSubscription, RawEvent
 
 def _format_relative_time(dt: datetime) -> str:
-    delta = datetime.utcnow() - dt
+    delta = datetime.now(tz=timezone.utc) - dt
     seconds = int(delta.total_seconds())
     if seconds < 60:
         return "just now"
@@ -32,6 +32,42 @@ def _format_relative_time(dt: datetime) -> str:
 # Global KPIs (agregados desde warehouses existentes)
 # ================================================================
 
+
+def get_global_kpis(db: Session) -> Dict[str, Any]:
+    total_orders = db.query(func.count(FactOrder.id)).scalar() or 0
+    delivered = (
+        db.query(func.count(FactOrder.id))
+        .filter(FactOrder.delivery_completed == True)  # noqa: E712
+        .scalar()
+        or 0
+    )
+    delivery_rate = round((delivered / total_orders * 100) if total_orders > 0 else 0.0, 2)
+    revenue = float(db.query(func.sum(FactOrder.total_amount)).scalar() or 0.0)
+
+    active_subs = (
+        db.query(func.count(FactSubscription.id))
+        .filter(FactSubscription.status == "active")
+        .scalar()
+        or 0
+    )
+
+    incident_count = (
+        db.query(func.count(FactIncident.id))
+        .filter(FactIncident.status != "resolved")
+        .scalar()
+        or 0
+    )
+
+    return {
+        "totalOrders": total_orders,
+        "deliveryRate": delivery_rate,
+        "revenue": round(revenue, 2),
+        "notificationSuccessRate": 0.0,
+        "activeSubscriptions": active_subs,
+        "iotAlerts": 0,
+        "incidentCount": incident_count,
+        "paymentFailureRate": 0.0,
+    }
 
 
 # ================================================================
@@ -173,7 +209,7 @@ def _human_message(event: RawEvent) -> str:
 def get_recent_activities(db: Session, limit: int = 10) -> List[Dict[str, Any]]:
     rows = (
         db.query(RawEvent)
-        .order_by(RawEvent.created_at.desc())
+        .order_by(RawEvent.ingested_at.desc())
         .limit(limit)
         .all()
     )
@@ -182,7 +218,7 @@ def get_recent_activities(db: Session, limit: int = 10) -> List[Dict[str, Any]]:
             "id": f"ACT-{r.id:06d}",
             "type": _classify_activity_type(r.source),
             "message": _human_message(r),
-            "timestamp": _format_relative_time(r.created_at),
+            "timestamp": _format_relative_time(r.ingested_at),
             "status": _classify_activity_status(r.event_type or ""),
         }
         for r in rows

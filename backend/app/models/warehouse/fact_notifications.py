@@ -3,8 +3,8 @@ Modelo warehouse para notificaciones.
 Almacena historial de notificaciones enviadas con estados de entrega y reintentos.
 """
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text
-from datetime import datetime
+from sqlalchemy import Column, CheckConstraint, String, Integer, Boolean, DateTime, Text
+from datetime import datetime, timezone
 import uuid
 
 from app.db.base import Base
@@ -100,22 +100,28 @@ class FactNotifications(Base):
     )
     
     fecha_entrega = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         doc="Timestamp cuando se entregó la notificación"
     )
-    
+
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
         doc="Timestamp de creación del registro"
     )
-    
+
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
         doc="Timestamp de última actualización"
+    )
+
+    __table_args__ = (
+        CheckConstraint("estado IN ('enviado', 'entregado', 'fallido')", name="ck_fact_notifications_estado"),
+        CheckConstraint("canal_original IN ('sms', 'email', 'push')", name="ck_fact_notifications_canal_original"),
+        CheckConstraint("canal_usado IN ('sms', 'email', 'push')", name="ck_fact_notifications_canal_usado"),
     )

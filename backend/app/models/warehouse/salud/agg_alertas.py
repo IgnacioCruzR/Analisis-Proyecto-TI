@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import Column, String, DateTime, Date, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -30,8 +30,8 @@ class AggAlertas(Base):
     tiempo_promedio_resolucion_horas = Column(String(10), nullable=True)
     
     # Timestamp for DWH tracking
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (

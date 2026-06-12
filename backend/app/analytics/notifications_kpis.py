@@ -5,7 +5,7 @@ Contiene funciones para calcular KPIs desde fact_notifications y raw_events.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date, Integer, case
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 
 from app.models.warehouse.fact_notifications import FactNotifications
@@ -20,7 +20,7 @@ def get_total_notifications(db: Session, days: Optional[int] = None) -> int:
     """Obtiene el total de notificaciones registradas."""
     query = db.query(func.count(FactNotifications.id_notificacion))
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
     return query.scalar() or 0
 
@@ -31,7 +31,7 @@ def get_delivered_notifications(db: Session, days: Optional[int] = None) -> int:
         FactNotifications.estado == "entregado"
     )
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
     return query.scalar() or 0
 
@@ -42,7 +42,7 @@ def get_failed_notifications(db: Session, days: Optional[int] = None) -> int:
         FactNotifications.estado == "fallido"
     )
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
     return query.scalar() or 0
 
@@ -53,7 +53,7 @@ def get_fallback_notifications(db: Session, days: Optional[int] = None) -> int:
         FactNotifications.fallback_activado == True
     )
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
     return query.scalar() or 0
 
@@ -105,7 +105,7 @@ def get_avg_attempts(db: Session, days: Optional[int] = None) -> float:
     """Promedio de intentos por notificación."""
     query = db.query(func.avg(FactNotifications.intentos))
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
     result = query.scalar()
     return round(float(result), 2) if result else 0.0
@@ -183,7 +183,7 @@ def get_notifications_by_channel(db: Session, days: Optional[int] = None) -> Lis
     ).filter(FactNotifications.canal_usado.isnot(None))
 
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
 
     rows = query.group_by(FactNotifications.canal_usado).all()
@@ -215,7 +215,7 @@ def get_notifications_by_status(db: Session, days: Optional[int] = None) -> List
     )
 
     if days:
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactNotifications.created_at >= cutoff)
 
     rows  = query.group_by(FactNotifications.estado).all()
@@ -259,7 +259,7 @@ def get_notifications_list(db: Session, limit: int = 50) -> List[Dict]:
 
 def get_notifications_timeline(db: Session, days: int = 30) -> List[Dict]:
     """Timeline diario: total, entregadas, fallidas y fallbacks por día."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
 
     rows = (
         db.query(

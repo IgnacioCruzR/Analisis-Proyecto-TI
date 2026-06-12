@@ -1,4 +1,4 @@
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Date, Time, Index, ForeignKey, Interval
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -23,8 +23,8 @@ class FactVisitas(Base):
     # Date Dimensions
     fecha_programada = Column(Date, nullable=False, index=True)
     hora_programada = Column(Time, nullable=True)
-    fecha_inicio_real = Column(DateTime, nullable=True, index=True)
-    fecha_fin_real = Column(DateTime, nullable=True)
+    fecha_inicio_real = Column(DateTime(timezone=True), nullable=True, index=True)
+    fecha_fin_real = Column(DateTime(timezone=True), nullable=True)
     
     # Calculated Metrics
     duracion_minutos = Column(Integer, nullable=True)
@@ -36,8 +36,8 @@ class FactVisitas(Base):
     puntual = Column(Integer, default=0)      # 1 = on time, 0 = late
     
     # Timestamp for DWH tracking
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Composite indexes for common queries
     __table_args__ = (

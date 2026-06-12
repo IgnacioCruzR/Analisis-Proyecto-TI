@@ -3,11 +3,9 @@ KPIs para cálculos analíticos del dominio Orders.
 
 Contiene funciones para calcular KPIs desde fact_orders.
 """
-from certifi import where
-
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date, Integer
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Tuple, Optional
 
 from app.models import FactOrder
@@ -26,7 +24,7 @@ def get_total_orders(db: Session, days: Optional[int] = None) -> int:
     """
     query = db.query(func.count(FactOrder.id))
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactOrder.created_at >= cutoff_date)
     return query.scalar() or 0
 
@@ -40,7 +38,7 @@ def get_delivery_rate(db: Session, days: Optional[int] = None) -> float:
         db: Sesión SQLAlchemy
         days: Cantidad de días atrás a considerar (None = sin filtro)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactOrder.id))
     delivered_query = db.query(func.count(FactOrder.id)).filter(
@@ -70,7 +68,7 @@ def get_payment_failure_rate(db: Session, days: Optional[int] = None) -> float:
         db: Sesión SQLAlchemy
         days: Cantidad de días atrás a considerar (None = sin filtro)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     payment_attempted_query = db.query(func.count(FactOrder.id)).filter(
         FactOrder.status.in_(["paid", "payment_failed"])
@@ -102,7 +100,7 @@ def get_payment_success_rate(db: Session, days: Optional[int] = None) -> float:
         db: Sesión SQLAlchemy
         days: Cantidad de días atrás a considerar (None = sin filtro)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     payment_attempted_query = db.query(func.count(FactOrder.id)).filter(
         FactOrder.status.in_(["paid", "payment_failed"])
@@ -142,7 +140,7 @@ def get_avg_processing_time(db: Session, days: Optional[int] = None) -> float:
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactOrder.created_at >= cutoff_date)
     
     avg_seconds = query.scalar()
@@ -166,7 +164,7 @@ def get_revenue_total(db: Session, days: Optional[int] = None) -> float:
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactOrder.created_at >= cutoff_date)
     
     total = query.scalar() or 0.0
@@ -197,7 +195,7 @@ def get_stock_reservation_rate(db: Session, days: Optional[int] = None) -> float
         db: Sesión SQLAlchemy
         days: Cantidad de días atrás a considerar (None = sin filtro)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactOrder.id))
     reserved_query = db.query(func.count(FactOrder.id)).filter(
@@ -226,7 +224,7 @@ def get_fulfillment_rate(db: Session, days: Optional[int] = None) -> float:
         db: Sesión SQLAlchemy
         days: Cantidad de días atrás a considerar (None = sin filtro)
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days) if days else None
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
     
     total_query = db.query(func.count(FactOrder.id))
     fulfilled_query = db.query(func.count(FactOrder.id)).filter(
@@ -286,7 +284,7 @@ def get_orders_by_channel(db: Session, days: Optional[int] = None) -> List[Tuple
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactOrder.created_at >= cutoff_date)
     
     results = query.group_by(FactOrder.sales_channel).all()
@@ -311,7 +309,7 @@ def get_orders_by_status(db: Session, days: Optional[int] = None) -> List[Tuple[
     )
     
     if days:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         query = query.filter(FactOrder.created_at >= cutoff_date)
     
     results = query.group_by(FactOrder.status).all()
@@ -330,7 +328,7 @@ def get_orders_by_date(db: Session, days: int = 30) -> List[Dict]:
     Returns:
         List de dicts: [{'date': '2026-05-09', 'count': 25, 'revenue': ...}, ...]
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
     
     delivered_case = func.sum(
         func.cast(FactOrder.delivery_completed == True, Integer)
@@ -374,24 +372,55 @@ def get_orders_by_date(db: Session, days: int = 30) -> List[Dict]:
 
 def get_all_kpis(db: Session, days: Optional[int] = None) -> Dict:
     """
-    Calcula todos los KPIs consolidados.
-    
-    Args:
-        db: Sesión SQLAlchemy
-        days: Cantidad de días atrás a considerar (None = sin filtro)
-    
-    Returns:
-        Dict con todos los KPIs principales
+    Calcula todos los KPIs consolidados en una sola query usando
+    PostgreSQL FILTER (WHERE ...) en las funciones de agregación.
     """
+    cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days) if days else None
+
+    q = db.query(
+        func.count(FactOrder.id).label("total"),
+        func.count(FactOrder.id).filter(FactOrder.delivery_completed == True).label("delivered"),
+        func.count(FactOrder.id).filter(FactOrder.status == "paid").label("paid"),
+        func.count(FactOrder.id).filter(FactOrder.status == "payment_failed").label("failed"),
+        func.count(FactOrder.id).filter(
+            FactOrder.status.in_(["paid", "payment_failed"])
+        ).label("attempted"),
+        func.count(FactOrder.id).filter(FactOrder.stock_reserved == True).label("reserved"),
+        func.count(FactOrder.id).filter(
+            FactOrder.status == "paid", FactOrder.delivery_completed == True
+        ).label("fulfilled"),
+        func.avg(FactOrder.processing_time_seconds).filter(
+            FactOrder.delivery_completed == True,
+            FactOrder.processing_time_seconds.isnot(None),
+            FactOrder.processing_time_seconds > 0,
+        ).label("avg_processing_secs"),
+        func.coalesce(
+            func.sum(FactOrder.total_amount).filter(FactOrder.payment_success == True), 0
+        ).label("revenue"),
+    )
+
+    if cutoff_date:
+        q = q.filter(FactOrder.created_at >= cutoff_date)
+
+    row = q.one()
+
+    total = row.total or 0
+    attempted = row.attempted or 0
+    revenue = float(row.revenue or 0)
+    avg_secs = float(row.avg_processing_secs or 0)
+
+    delivery_rate = round(row.delivered / total, 2) if total else 0.0
+    payment_success_rate = round(row.paid / attempted, 2) if attempted else 0.0
+
     return {
-        "total_orders": get_total_orders(db, days),
-        "delivery_rate": get_delivery_rate(db, days),
-        "payment_failure_rate": get_payment_failure_rate(db, days),
-        "payment_success_rate": get_payment_success_rate(db, days),
-        "avg_processing_time_hours": get_avg_processing_time(db, days),
-        "revenue_total": get_revenue_total(db, days),
-        "average_order_value": get_average_order_value(db, days),
-        "sla_compliance": get_sla_compliance(db, days),
-        "stock_reservation_rate": get_stock_reservation_rate(db, days),
-        "fulfillment_rate": get_fulfillment_rate(db, days)
+        "total_orders": total,
+        "delivery_rate": delivery_rate,
+        "payment_failure_rate": round(row.failed / attempted, 2) if attempted else 0.0,
+        "payment_success_rate": payment_success_rate,
+        "avg_processing_time_hours": round(avg_secs / 3600, 2),
+        "revenue_total": round(revenue, 2),
+        "average_order_value": round(revenue / total, 2) if total else 0.0,
+        "sla_compliance": round((delivery_rate + payment_success_rate) / 2, 2),
+        "stock_reservation_rate": round(row.reserved / total, 2) if total else 0.0,
+        "fulfillment_rate": round(row.fulfilled / total, 2) if total else 0.0,
     }

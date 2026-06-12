@@ -2,7 +2,7 @@
 Consultas analíticas sobre fact_incidents (warehouse de incidentes).
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import and_, func
@@ -12,7 +12,7 @@ from app.models.warehouse.fact_incidents import FactIncident
 
 
 def _format_relative_time(dt: datetime) -> str:
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     delta = now - dt
     seconds = int(delta.total_seconds())
     if seconds < 60:
@@ -34,7 +34,7 @@ def get_incidents_kpis(db: Session) -> Dict[str, Any]:
         or 0
     )
 
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     resolved_today = (
         db.query(func.count(FactIncident.id))
         .filter(

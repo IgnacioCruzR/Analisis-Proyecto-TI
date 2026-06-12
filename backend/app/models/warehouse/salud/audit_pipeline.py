@@ -1,5 +1,5 @@
-from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, Index
+from datetime import datetime, timezone
+from sqlalchemy import CheckConstraint, Column, String, DateTime, Text, Index
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.db.base import Base
@@ -31,8 +31,8 @@ class AuditPipeline(Base):
     advertencias = Column(Text, nullable=True)
     
     # Timestamp Information
-    fecha_inicio = Column(DateTime, nullable=False)
-    fecha_fin = Column(DateTime, nullable=True)
+    fecha_inicio = Column(DateTime(timezone=True), nullable=False)
+    fecha_fin = Column(DateTime(timezone=True), nullable=True)
     duracion_segundos = Column(String(20), nullable=True)
     
     # Data Quality Information
@@ -40,10 +40,11 @@ class AuditPipeline(Base):
     trazabilidad_id = Column(String(100), nullable=True)
     
     # Timestamp for DWH tracking
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     
     # Composite indexes for common queries
     __table_args__ = (
+        CheckConstraint("estado IN ('SUCCESS', 'FAILED', 'PARTIAL')", name="ck_audit_pipeline_estado"),
         Index("idx_audit_pipeline_executions", "execution_id"),
         Index("idx_audit_pipeline_source_target", "source_system", "target_table"),
         Index("idx_audit_pipeline_estado", "estado"),

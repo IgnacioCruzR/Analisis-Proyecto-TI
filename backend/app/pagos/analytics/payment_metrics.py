@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, literal_column
@@ -164,7 +164,7 @@ def get_failure_reasons(db: Session, hours: int = 24, top_n: int = 10) -> Dict[s
     Usa una ventana rodante de `hours` horas hacia atrás desde ahora.
     Devuelve: { rejection_rate, total, failed, reasons: [{reason, count, percentage}] }
     """
-    start = datetime.utcnow() - timedelta(hours=hours)
+    start = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
 
     total = (
         db.query(func.count(FactPagos.transaction_id))
@@ -223,7 +223,7 @@ def get_conciliation_summary(db: Session, hours: int = 24) -> Dict[str, Any]:
 
     Ventana rodante de `hours` horas. Devuelve statuses, total y approval_rate.
     """
-    start = datetime.utcnow() - timedelta(hours=hours)
+    start = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
 
     rows = (
         db.query(

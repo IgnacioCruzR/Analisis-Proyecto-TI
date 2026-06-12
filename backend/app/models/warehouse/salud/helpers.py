@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
@@ -49,7 +49,7 @@ class DimensionHelper:
                 **{business_key: business_key_value},
                 **nuevos_valores,
                 es_actual=True,
-                fecha_inicio=datetime.utcnow()
+                fecha_inicio=datetime.now(tz=timezone.utc)
             )
             db.add(nuevo_record)
             db.commit()
@@ -68,14 +68,14 @@ class DimensionHelper:
         
         # Close current record (SCD Type 2)
         record_actual.es_actual = False
-        record_actual.fecha_fin = datetime.utcnow()
+        record_actual.fecha_fin = datetime.now(tz=timezone.utc)
         
         # Create new record with updated values
         nuevo_record = modelo_dim(
             **{business_key: business_key_value},
             **nuevos_valores,
             es_actual=True,
-            fecha_inicio=datetime.utcnow()
+            fecha_inicio=datetime.now(tz=timezone.utc)
         )
         db.add(nuevo_record)
         db.commit()
@@ -137,7 +137,7 @@ class FactHelper:
             existente.fecha_fin_real = fecha_fin_real
             existente.duracion_minutos = duracion_minutos
             existente.retraso_minutos = retraso_minutos
-            existente.updated_at = datetime.utcnow()
+            existente.updated_at = datetime.now(tz=timezone.utc)
             db.commit()
             return existente
         
@@ -185,7 +185,7 @@ class FactHelper:
         if existente:
             # Update existing
             existente.estado = estado
-            existente.updated_at = datetime.utcnow()
+            existente.updated_at = datetime.now(tz=timezone.utc)
             db.commit()
             return existente
         
@@ -222,7 +222,7 @@ class AuditHelper:
         Returns:
             execution_id
         """
-        execution_id = f"{pipeline_name}_{datetime.utcnow().isoformat()}"
+        execution_id = f"{pipeline_name}_{datetime.now(tz=timezone.utc).isoformat()}"
         
         audit = AuditPipeline(
             id=uuid.uuid4(),
@@ -231,7 +231,7 @@ class AuditHelper:
             source_system=source_system,
             target_table=target_table,
             estado="RUNNING",
-            fecha_inicio=datetime.utcnow()
+            fecha_inicio=datetime.now(tz=timezone.utc)
         )
         db.add(audit)
         db.commit()
@@ -259,7 +259,7 @@ class AuditHelper:
         if not audit:
             raise ValueError(f"Pipeline execution {execution_id} not found")
         
-        fecha_fin = datetime.utcnow()
+        fecha_fin = datetime.now(tz=timezone.utc)
         duracion_segundos = (fecha_fin - audit.fecha_inicio).total_seconds()
         
         audit.estado = estado
@@ -328,7 +328,7 @@ class ReportHelper:
                 "tipo": a.tipo,
                 "prioridad": a.prioridad,
                 "mensaje": a.mensaje,
-                "tiempo_abierta": (datetime.utcnow() - a.created_at).total_seconds() / 3600
+                "tiempo_abierta": (datetime.now(tz=timezone.utc) - a.created_at).total_seconds() / 3600
             }
             for a in alertas
         ]
