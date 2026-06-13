@@ -1,0 +1,243 @@
+"""
+Tests para app.services.crm_analytics_service.
+
+Cubre todas las funciones del servicio usando mocks de sesión SQLAlchemy:
+  - get_crm_kpis: estructura del dict, valores numéricos
+  - get_crm_timeline: longitud de lista, campos por día
+  - get_recent_tickets: límite respetado, campos del ticket serializado
+  - get_sla_summary: totalViolations, criticalViolations, slaComplianceRate
+"""
+
+import pytest
+from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _make_db_scalar(value):
+    """Mock que devuelve el mismo valor en .scalar() independiente de filtros."""
+    db = MagicMock()
+    db.query.return_value.scalar.return_value = value
+    db.query.return_value.filter.return_value.scalar.return_value = value
+    db.query.return_value.filter.return_value.filter.return_value.scalar.return_value = value
+    db.query.return_value.filter.return_value.filter.return_value.filter.return_value.scalar.return_value = value
+    return db
+
+
+def _make_ticket(ticket_id="T-001", asunto="Test", estado="Abierto",
+                 prioridad="Media", canal="email", source_project="proj",
+                 opened_at=None, updated_at=None):
+    t = MagicMock()
+    t.ticket_id = ticket_id
+    t.asunto = asunto
+    t.estado = estado
+    t.prioridad = prioridad
+    t.canal = canal
+    t.source_project = source_project
+    t.opened_at = opened_at or datetime(2026, 6, 1, 10, 0, 0)
+    t.updated_at = updated_at or datetime(2026, 6, 1, 11, 0, 0)
+    return t
+
+
+# ─── get_crm_kpis ─────────────────────────────────────────────────────────────
+
+class TestGetCrmKpis:
+    def _make_kpi_db(self):
+        db = MagicMock()
+        # Orden de llamadas: total_customers, open_tickets,
+        # avg_response_time, avg_csat, messages_today, resolved, total
+        scalar_values = [50, 12, 2.5, 4.2, 30, 8, 20]
+        scalar_iter = iter(scalar_values)
+
+        def _scalar():
+            try:
+                return next(scalar_iter)
+            except StopIteration:
+                return 0
+
+        db.query.return_value.scalar.side_effect = _scalar
+        db.query.return_value.filter.return_value.scalar.side_effect = _scalar
+        db.query.return_value.filter.return_value.in_.return_value.scalar.side_effect = _scalar
+        db.query.return_value.filter.return_value.filter.return_value.scalar.side_effect = _scalar
+        return db
+
+    def test_returns_all_expected_keys(self):
+        from app.services.crm_analytics_service import get_crm_kpis
+        db = _make_db_scalar(0)
+        result = get_crm_kpis(db)
+        expected_keys = {
+            "totalCustomers", "openTickets", "avgResponseTimeMinutes",
+            "csatScore", "messagesToday", "resolutionRate"
+        }
+        assert expected_keys.issubset(result.keys())
+
+    def test_all_values_are_numeric(self):
+        from app.services.crm_analytics_service import get_crm_kpis
+        db = _make_db_scalar(0)
+        result = get_crm_kpis(db)
+        for key, val in result.items():
+            assert isinstance(val, (int, float)), f"{key} debería ser numérico"
+
+    def test_resolution_rate_never_divides_by_zero(self):
+        """Cuando total=0, la lógica usa `total = ... or 1` para evitar ZeroDivisionError."""
+        from app.services.crm_analytics_service import get_crm_kpis
+        db = _make_db_scalar(0)
+        result = get_crm_kpis(db)
+        assert "resolutionRate" in result
+        assert result["resolutionRate"] == 0.0
+
+    def test_avg_response_time_none_returns_zero(self):
+        from app.services.crm_analytics_service import get_crm_kpis
+        db = MagicMock()
+        # avg_response_time scalar devuelve None
+        db.query.return_value.scalar.return_value = None
+        db.query.return_value.filter.return_value.scalar.return_value = None
+        db.query.return_value.filter.return_value.filter.return_value.scalar.return_value = None
+        result = get_crm_kpis(db)
+        assert result["avgResponseTimeMinutes"] == 0.0
+
+    def test_csat_none_returns_zero(self):
+        from app.services.crm_analytics_service import get_crm_kpis
+        db = _make_db_scalar(None)
+        result = get_crm_kpis(db)
+        assert result["csatScore"] == 0.0
+
+
+# ─── get_crm_timeline ─────────────────────────────────────────────────────────
+
+class TestGetCrmTimeline:
+    def test_default_14_days(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(0)
+        result = get_crm_timeline(db)
+        assert len(result) == 14
+
+    def test_custom_days_parameter(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(0)
+        result = get_crm_timeline(db, days=7)
+        assert len(result) == 7
+
+    def test_each_point_has_required_fields(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(0)
+        result = get_crm_timeline(db, days=3)
+        for point in result:
+            assert "date" in point
+            assert "opened" in point
+            assert "resolved" in point
+
+    def test_dates_are_in_iso_format(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(0)
+        result = get_crm_timeline(db, days=3)
+        for point in result:
+            # Debe poder parsearse como fecha YYYY-MM-DD
+            datetime.strptime(point["date"], "%Y-%m-%d")
+
+    def test_values_are_ints(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(5)
+        result = get_crm_timeline(db, days=2)
+        for point in result:
+            assert isinstance(point["opened"], int)
+            assert isinstance(point["resolved"], int)
+
+    def test_ordered_chronologically(self):
+        from app.services.crm_analytics_service import get_crm_timeline
+        db = _make_db_scalar(0)
+        result = get_crm_timeline(db, days=5)
+        dates = [point["date"] for point in result]
+        assert dates == sorted(dates)
+
+
+# ─── get_recent_tickets ───────────────────────────────────────────────────────
+
+class TestGetRecentTickets:
+    def test_returns_list_of_dicts(self):
+        from app.services.crm_analytics_service import get_recent_tickets
+        tickets = [_make_ticket("T-001"), _make_ticket("T-002")]
+        db = MagicMock()
+        db.query.return_value.order_by.return_value.limit.return_value.all.return_value = tickets
+        result = get_recent_tickets(db, limit=10)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    def test_each_ticket_has_all_fields(self):
+        from app.services.crm_analytics_service import get_recent_tickets
+        tickets = [_make_ticket()]
+        db = MagicMock()
+        db.query.return_value.order_by.return_value.limit.return_value.all.return_value = tickets
+        result = get_recent_tickets(db)
+        t = result[0]
+        for field in ("ticketId", "asunto", "estado", "prioridad", "canal",
+                      "sourceProject", "openedAt", "updatedAt"):
+            assert field in t, f"Campo faltante: {field}"
+
+    def test_respects_limit(self):
+        from app.services.crm_analytics_service import get_recent_tickets
+        db = MagicMock()
+        db.query.return_value.order_by.return_value.limit.return_value.all.return_value = []
+        get_recent_tickets(db, limit=5)
+        db.query.return_value.order_by.return_value.limit.assert_called_with(5)
+
+    def test_empty_db_returns_empty_list(self):
+        from app.services.crm_analytics_service import get_recent_tickets
+        db = MagicMock()
+        db.query.return_value.order_by.return_value.limit.return_value.all.return_value = []
+        result = get_recent_tickets(db)
+        assert result == []
+
+    def test_none_fields_default_to_empty_string(self):
+        from app.services.crm_analytics_service import get_recent_tickets
+        t = MagicMock()
+        t.ticket_id = "T-999"
+        t.asunto = None
+        t.estado = "Abierto"
+        t.prioridad = "Baja"
+        t.canal = None
+        t.source_project = None
+        t.opened_at = datetime(2026, 6, 1, 10, 0, 0)
+        t.updated_at = datetime(2026, 6, 1, 11, 0, 0)
+
+        db = MagicMock()
+        db.query.return_value.order_by.return_value.limit.return_value.all.return_value = [t]
+        result = get_recent_tickets(db)
+        assert result[0]["asunto"] == ""
+        assert result[0]["canal"] == ""
+        assert result[0]["sourceProject"] == ""
+
+
+# ─── get_sla_summary ─────────────────────────────────────────────────────────
+
+class TestGetSlaSummary:
+    def test_returns_all_sla_keys(self):
+        from app.services.crm_analytics_service import get_sla_summary
+        db = _make_db_scalar(0)
+        result = get_sla_summary(db)
+        assert "totalViolations" in result
+        assert "criticalViolations" in result
+        assert "slaComplianceRate" in result
+
+    def test_sla_compliance_is_percentage(self):
+        from app.services.crm_analytics_service import get_sla_summary
+        db = _make_db_scalar(10)
+        result = get_sla_summary(db)
+        rate = result["slaComplianceRate"]
+        assert 0.0 <= rate <= 100.0
+
+    def test_all_violations_count_ints(self):
+        from app.services.crm_analytics_service import get_sla_summary
+        db = _make_db_scalar(5)
+        result = get_sla_summary(db)
+        assert isinstance(result["totalViolations"], int)
+        assert isinstance(result["criticalViolations"], int)
+
+    def test_no_tickets_evaluated_default_to_one(self):
+        """Cuando tickets_evaluated=0 se usa `or 1` para evitar ZeroDivisionError."""
+        from app.services.crm_analytics_service import get_sla_summary
+        db = _make_db_scalar(0)
+        result = get_sla_summary(db)
+        # No debe lanzar ZeroDivisionError
+        assert result["slaComplianceRate"] == 0.0
