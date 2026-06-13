@@ -64,13 +64,13 @@ async function fetchJson<T>(path: string): Promise<T> {
 }
 
 export function fetchSaludDashboard() {
-  return fetchJson<SaludDashboard>('/kpis/salud/dashboard')
+  return fetchJson<SaludDashboard>('/v1/kpis/salud/dashboard')
 }
 
 export function fetchSaludVisitTrends(days = 14) {
-  return fetchJson<SaludVisitTrends>(`/kpis/salud/visit-trends?days=${days}`)
+  return fetchJson<SaludVisitTrends>(`/v1/kpis/salud/visit-trends?days=${days}`)
 }
 
 export function fetchSaludTodaySchedule() {
-  return fetchJson<SaludTodaySchedule>('/kpis/salud/today-schedule')
+  return fetchJson<SaludTodaySchedule>('/v1/kpis/salud/today-schedule')
 }
