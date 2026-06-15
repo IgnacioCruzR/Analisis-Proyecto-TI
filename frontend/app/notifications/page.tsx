@@ -191,7 +191,6 @@ function NotificationContent() {
                   Últimos 365 días
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Custom range</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>{" "}
           </div>
