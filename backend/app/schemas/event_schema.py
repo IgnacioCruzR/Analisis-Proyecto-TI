@@ -43,7 +43,7 @@ class EventCreate(BaseModel):
 
 class AcknowledgeResponse(BaseModel):
     """Respuesta 202 — confirma recepción sin esperar procesamiento ETL."""
-    status: str
+    status: Literal["acknowledged"]
     event_id: UUID
 
     model_config = {
