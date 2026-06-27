@@ -6,7 +6,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, KeycloakUser
 from app.db import get_db
 from app.db.session import SessionLocal
 from app.models.raw.raw_events import RawEvent
@@ -23,7 +22,7 @@ from app.etl.processors.inventory_processor import process_inventory_event
 from app.etl.processors.payment_processor import process_payment_event
 from app.etl.processors.iot_processor import process_iot_event
 from app.etl.processors.notification_proccessor import process_notification_event
-from app.api.rate_limit import require_rate_limit
+from app.api.rate_limit import require_ip_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,6 @@ router = APIRouter(
     tags=["events"],
     responses={
         400: {"description": "Payload JSON inválido o campos requeridos faltantes"},
-        401: {"description": "Falta token Bearer o token inválido"},
         500: {"description": "Error interno del servidor"},
     },
 )
@@ -71,19 +69,14 @@ def _enqueue_etl(event_id: uuid.UUID, source: str) -> bool:
 
 
 def retry_stale_events() -> None:
-    """Reintenta el ETL para eventos stuck en processed=False por más de 5 minutos.
-
-    Usa SELECT FOR UPDATE SKIP LOCKED para que múltiples workers no procesen
-    el mismo evento simultáneamente sin necesitar Redis.
-    """
+    """Reintenta el ETL para eventos stuck en processed=False por más de 5 minutos."""
     cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=5)
     db: Session = SessionLocal()
     try:
         stale = (
             db.query(RawEvent)
             .filter(RawEvent.processed == False, RawEvent.ingested_at < cutoff)
-            .with_for_update(skip_locked=True)
-            .limit(25)
+            .limit(100)
             .all()
         )
         if stale:
@@ -91,8 +84,7 @@ def retry_stale_events() -> None:
         for raw_event in stale:
             if raw_event.source in _ETL_PROCESSORS:
                 if not _enqueue_etl(raw_event.event_id, raw_event.source):
-                    # Redis no disponible — procesar inline; el FOR UPDATE lock
-                    # en 'db' impide que otro worker tome el mismo evento.
+                    # Redis no disponible o ya en cola — procesar inline como fallback
                     _run_etl(raw_event.event_id, raw_event.source)
     except Exception:
         logger.exception("retry_stale_events: error consultando eventos pendientes")
@@ -143,8 +135,7 @@ async def ingest_event(
     event: EventCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _user: KeycloakUser = Depends(get_current_user),
-    _rl: None = Depends(require_rate_limit),
+    _rl: None = Depends(require_ip_rate_limit),
 ) -> AcknowledgeResponse:
     event_id = uuid.uuid4()
     ingested_at = datetime.now(tz=timezone.utc)
@@ -189,4 +180,4 @@ async def ingest_event(
         # Redis no disponible en desarrollo — fallback a BackgroundTasks en-proceso
         background_tasks.add_task(_run_etl, event_id=db_event.event_id, source=db_event.source)
 
-    return AcknowledgeResponse(status="acknowledged", event_id=event_id)
+    return AcknowledgeResponse(status="Evento Recibido", event_id=event_id)
