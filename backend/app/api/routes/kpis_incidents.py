@@ -3,7 +3,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth import require_any_role
 from app.db import get_db
 from app.schemas.incidents_kpi_schema import (
     IncidentKPIsResponse,
@@ -18,14 +17,11 @@ from app.services.incidents_analytics_service import (
 
 logger = logging.getLogger(__name__)
 
-INCIDENTS_ROLES = ["admin", "analista", "incidents"]
-
 router = APIRouter(tags=["kpis — incidents"])
 
 
 @router.get(
     "/incidents/kpis",
-    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=IncidentKPIsResponse,
     summary="KPIs de gestión de incidentes",
 )
@@ -39,7 +35,6 @@ async def get_incidents_kpis_endpoint(db: Session = Depends(get_db)) -> Incident
 
 @router.get(
     "/incidents/timeline",
-    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentTimelinePoint],
     summary="Línea de tiempo de incidentes",
 )
@@ -56,7 +51,6 @@ async def get_incidents_timeline_endpoint(
 
 @router.get(
     "/incidents/list",
-    dependencies=[Depends(require_any_role(INCIDENTS_ROLES))],
     response_model=list[IncidentRow],
     summary="Lista de incidentes recientes",
 )
