@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import os
 import uuid as _uuid
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger(__name__)
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,7 +46,7 @@ from app.pagos.models import (  # noqa: F401
     FactPaymentsEvent,
     FactSlaEvent,
 )
-from app.api import events_router, inventory_router, kpis_router, analytics_router
+from app.api import events_router, inventory_router, kpis_router, analytics_router, auditoria_router
 
 _ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 if _ENVIRONMENT == "development":
@@ -59,7 +62,7 @@ async def lifespan(_app: FastAPI):
             try:
                 await asyncio.to_thread(retry_stale_events)
             except Exception:
-                pass
+                logger.exception("_periodic_retry: error en retry_stale_events")
 
     async def _etl_consumer():
         while True:
@@ -122,6 +125,7 @@ app.include_router(events_router, prefix="/v1")
 app.include_router(kpis_router, prefix="/v1", dependencies=[Depends(require_rate_limit)])
 app.include_router(inventory_router, prefix="/v1", dependencies=[Depends(require_rate_limit)])
 app.include_router(analytics_router, prefix="/v1", dependencies=[Depends(require_rate_limit)])
+app.include_router(auditoria_router, prefix="/v1", dependencies=[Depends(require_rate_limit)])
 
 
 @app.get("/", tags=["health"])
