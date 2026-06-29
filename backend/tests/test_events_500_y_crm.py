@@ -124,7 +124,7 @@ class TestCRMEventoCorrecto:
         assert response.status_code == 202
 
     def test_respuesta_tiene_status_evento_recibido(self, client: TestClient, mock_db: MagicMock):
-        """El campo status debe ser exactamente 'acknowledged', no 'acknowledged'."""
+        """El campo status debe ser exactamente 'acknowledged', no otro valor."""
         body = client.post("/v1/events", json=CRM_TICKET_CREADO).json()
         assert body["status"] == "acknowledged"
 
