@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.etl.processors.payment_processor import process_payment_event
+from app.pagos.services.payment_service import _hash_token
 from app.models.raw.raw_events import RawEvent
 from app.pagos.models.dim_estados_conciliacion import DimEstadosConciliacion
 from app.pagos.models.fact_pagos import FactPagos
@@ -149,7 +150,7 @@ class TestFlujointentoPago:
 
         fact = _fact_from_db_add(db)
         assert float(fact.monto) == 149990.00
-        assert fact.token_transaccion == "550e8400-e29b-41d4-a716-446655440000"
+        assert fact.token_transaccion == _hash_token("550e8400-e29b-41d4-a716-446655440000")
 
     @patch("app.etl.processors.payment_processor.get_error_code_id", return_value=None)
     @patch("app.etl.processors.payment_processor.get_or_create_estado")
