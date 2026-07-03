@@ -164,40 +164,39 @@ def get_failure_reasons(db: Session, hours: int = 24, top_n: int = 10) -> Dict[s
     Usa una ventana rodante de `hours` horas hacia atrás desde ahora.
     Devuelve: { rejection_rate, total, failed, reasons: [{reason, count, percentage}] }
     """
+    _RESOLVED = ("Aprobado", "discrepancia_de_monto", "discrepancia_de_transacciones", "Rechazado")
+    _FAILURES  = ("discrepancia_de_monto", "discrepancia_de_transacciones", "Rechazado")
+
     start = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
 
-    total = (
-        db.query(func.count(FactPagos.transaction_id))
+    # Token único con estado más reciente — excluye esperando_revisión del conteo
+    latest = (
+        db.query(FactPagos.token_transaccion, DimEstadosConciliacion.nombre.label("estado"), FactPagos.error_code_id)
+        .join(DimEstadosConciliacion, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
         .filter(FactPagos.timestamp_evento >= start)
-        .scalar() or 0
+        .distinct(FactPagos.token_transaccion)
+        .order_by(FactPagos.token_transaccion, FactPagos.timestamp_evento.desc())
+        .subquery()
     )
 
-    failed = (
-        db.query(func.count(FactPagos.transaction_id))
-        .join(DimEstadosConciliacion, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
-        .filter(
-            DimEstadosConciliacion.nombre != "Aprobado",
-            FactPagos.timestamp_evento >= start,
-        )
-        .scalar() or 0
-    )
+    total  = db.query(func.count()).select_from(latest).filter(latest.c.estado.in_(_RESOLVED)).scalar() or 0
+    failed = db.query(func.count()).select_from(latest).filter(latest.c.estado.in_(_FAILURES)).scalar() or 0
 
     rejection_rate = round(float(failed) / float(total) * 100.0, 2) if total else 0.0
 
     reasons_q = (
         db.query(
             DimErrorCode.descripcion.label("reason"),
-            func.count(FactPagos.transaction_id).label("cnt"),
+            func.count().label("cnt"),
         )
-        .join(DimEstadosConciliacion, FactPagos.estado_conciliacion_id == DimEstadosConciliacion.id)
-        .join(DimErrorCode, FactPagos.error_code_id == DimErrorCode.id)
+        .select_from(latest)
+        .join(DimErrorCode, DimErrorCode.id == latest.c.error_code_id)
         .filter(
-            DimEstadosConciliacion.nombre != "Aprobado",
-            FactPagos.timestamp_evento >= start,
-            FactPagos.error_code_id.isnot(None),
+            latest.c.estado.in_(_FAILURES),
+            latest.c.error_code_id.isnot(None),
         )
         .group_by(DimErrorCode.descripcion)
-        .order_by(func.count(FactPagos.transaction_id).desc())
+        .order_by(func.count().desc())
         .limit(top_n)
     )
 
