@@ -310,7 +310,7 @@ function IotContent() {
         {/* Estado de Sensores */}
         {devicesLoading ? (
           <ChartCardSkeleton />
-        ) : sensorsList.length > 0 ? (
+        ) : (
           <Card className="bg-card border-border">
             <CardHeader className="space-y-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -438,7 +438,7 @@ function IotContent() {
               </div>
             </CardContent>
           </Card>
-        ) : null}
+        )}
       </div>
   );
 }
