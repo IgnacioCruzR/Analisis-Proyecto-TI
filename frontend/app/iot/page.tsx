@@ -417,7 +417,30 @@ function IotContent() {
                 <p className="text-xs text-muted-foreground">
                   Página {currentPage} de {totalPages}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 bg-background border-border text-foreground hover:bg-muted whitespace-nowrap"
+                      >
+                        <span>Ir a página</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto w-40">
+                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                        <DropdownMenuItem
+                          key={pageNumber}
+                          onClick={() => setCurrentPage(pageNumber)}
+                          className={pageNumber === currentPage ? "font-medium" : ""}
+                        >
+                          Página {pageNumber}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     size="sm"
