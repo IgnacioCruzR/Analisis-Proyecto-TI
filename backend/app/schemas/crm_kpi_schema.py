@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -42,3 +42,27 @@ class CRMSLASummary(BaseModel):
     totalViolations: int
     criticalViolations: int
     slaComplianceRate: float = Field(..., description="Porcentaje de tickets resueltos dentro del SLA")
+
+
+class CRMExternalTicketResponse(BaseModel):
+    """Espejo del TicketDto real expuesto por el CRM externo
+    (GET /api/v1/analytics/estado-ticket/:id de pgti-proyecto-crm-backend).
+
+    Todos los campos salvo ticket_id/estado son opcionales porque el CRM
+    externo puede omitirlos según el tipo de ticket. Verificar contra la
+    doc oficial del TicketDto si se agregan más campos en el futuro.
+    """
+
+    ticket_id: str
+    estado: str
+    prioridad: Optional[str] = None
+    canal: Optional[str] = None
+    asunto: Optional[str] = None
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    pago_id_ref: Optional[str] = None
+    salud_ref: Optional[str] = None
+    resolucion: Optional[str] = None
+    # Nombre real del campo en el CRM externo — distinto de nuestro
+    # `suscripcion_id_red` interno (typo histórico ya documentado en tests).
+    suscripcion_id_ref: Optional[str] = None

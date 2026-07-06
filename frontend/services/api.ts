@@ -229,6 +229,8 @@ export const crmAPI = {
     fetchAPI(`/v1/kpis/crm/timeline?days=${days}`, mockData.crmTimeline),
   getTickets: () => fetchAPI("/v1/kpis/crm/tickets", mockData.crmTickets),
   getSLA: () => fetchAPI("/v1/kpis/crm/sla", mockData.crmSLA),
+  getTicketLive: (ticketId: string) =>
+    fetchAPI(`/v1/kpis/crm/tickets/${ticketId}/live`, mockData.crmTicketLive),
 };
 
 // Inventory API

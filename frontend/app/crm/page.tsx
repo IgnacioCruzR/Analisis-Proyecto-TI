@@ -1,11 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { KPICard, KPICardSkeleton } from '@/components/dashboard/kpi-card'
 import { ChartCard, ChartCardSkeleton } from '@/components/dashboard/chart-card'
 import { StatusBadge } from '@/components/dashboard/status-badge'
 import { useCRMKPIs, useCRMTimeline, useCRMTickets, useCRMSLA } from '@/hooks/use-analytics'
-import { ApiError } from '@/services/api'
+import { ApiError, crmAPI } from '@/services/api'
 import {
   Users,
   Headphones,
@@ -16,6 +17,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   AlertCircle,
+  Search,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -27,26 +29,36 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { CRMTicketRow } from '@/types/analytics'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import type { CRMTicketRow, CRMExternalTicketResponse } from '@/types/analytics'
 
+// Claves capitalizadas — coinciden con el casing real que devuelve el
+// backend (Abierto/Progreso/Resuelto/Cerrado, Baja/Media/Alta/Crítica).
+// El CRM externo envía minúsculas, pero se normalizan en la ingesta antes
+// de guardarse, así que la API siempre responde en este casing.
 const PRIORITY_STATUS: Record<string, 'warning' | 'info' | 'neutral' | 'error'> = {
-  alta:   'warning',
-  media:  'info',
-  baja:   'neutral',
-  critica:'error',
+  Alta:    'warning',
+  Media:   'info',
+  Baja:    'neutral',
+  Crítica: 'error',
 }
 
-const STATE_LABEL: Record<string, string> = {
-  abierto:     'open',
-  en_progreso: 'investigating',
-  cerrado:     'resolved',
-  escalado:    'warning',
+const STATE_LABEL: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
+  Abierto:  'error',
+  Progreso: 'warning',
+  Resuelto: 'success',
+  Cerrado:  'neutral',
 }
 
 function apiErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401 || error.status === 403)
       return 'Sin permiso para acceder a este módulo'
+    if (error.status === 404)
+      return 'Ticket no encontrado en el CRM externo'
+    if (error.status === 504)
+      return 'El CRM externo no respondió a tiempo'
     if (error.status >= 500)
       return 'Error del servidor — intente nuevamente'
   }
@@ -77,6 +89,76 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 1440)}d`
 }
 
+function TicketLiveSearch() {
+  const [ticketId, setTicketId] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const [result, setResult] = useState<CRMExternalTicketResponse | null>(null)
+
+  async function handleSearch() {
+    const id = ticketId.trim()
+    if (!id) return
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    try {
+      const data = await crmAPI.getTicketLive(id)
+      setResult(data as CRMExternalTicketResponse)
+    } catch (err) {
+      setError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="text-base font-semibold text-foreground">
+          Consultar ticket en vivo (CRM externo)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            placeholder="ID del ticket (ej: TKT-4521)"
+            value={ticketId}
+            onChange={(e) => setTicketId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <Button onClick={handleSearch} disabled={loading || !ticketId.trim()}>
+            <Search className="h-4 w-4 mr-2" />
+            {loading ? 'Buscando…' : 'Buscar'}
+          </Button>
+        </div>
+
+        {error ? (
+          <SectionError error={error} />
+        ) : result ? (
+          <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-foreground">{result.ticket_id}</span>
+              <StatusBadge status={STATE_LABEL[result.estado] ?? 'neutral'} label={result.estado} />
+              {result.prioridad && (
+                <StatusBadge status={PRIORITY_STATUS[result.prioridad] ?? 'neutral'} label={result.prioridad} />
+              )}
+            </div>
+            {result.asunto && <div className="text-sm text-foreground">{result.asunto}</div>}
+            <div className="text-sm text-muted-foreground space-y-1">
+              {result.cliente_nombre && <div>Cliente: {result.cliente_nombre}</div>}
+              {result.canal && <div>Canal: {result.canal}</div>}
+              {result.pago_id_ref && <div>Pago ref: {result.pago_id_ref}</div>}
+              {result.salud_ref && <div>Salud ref: {result.salud_ref}</div>}
+              {result.suscripcion_id_ref && <div>Suscripción ref: {result.suscripcion_id_ref}</div>}
+              {result.resolucion && <div>Resolución: {result.resolucion}</div>}
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function CRMPage() {
   const { data: kpis,     isLoading: kpisLoading,     error: kpisError }     = useCRMKPIs()
   const { data: timeline, isLoading: timelineLoading, error: timelineError } = useCRMTimeline(14)
@@ -94,6 +176,8 @@ export default function CRMPage() {
             Gestión de relaciones con clientes y análisis de tickets de soporte
           </p>
         </div>
+
+        <TicketLiveSearch />
 
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -234,7 +318,7 @@ export default function CRMPage() {
                         </div>
                       </div>
                       <div className="ml-4 shrink-0">
-                        <StatusBadge status={STATE_LABEL[ticket.estado] ?? ticket.estado} />
+                        <StatusBadge status={STATE_LABEL[ticket.estado] ?? 'neutral'} label={ticket.estado} />
                       </div>
                     </div>
                   ))}

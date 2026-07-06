@@ -35,6 +35,7 @@ import type {
   CRMTimeline,
   CRMTicketsResponse,
   CRMSLASummary,
+  CRMExternalTicketResponse,
 } from "@/types/analytics";
 
 // Orders Mock Data
@@ -713,11 +714,11 @@ export const crmTimeline: CRMTimeline = {
 
 export const crmTickets: CRMTicketsResponse = {
   tickets: [
-    { ticketId: 'TKT-4521', asunto: 'Problema con pago de suscripción', estado: 'abierto',       prioridad: 'alta',  canal: 'email',   sourceProject: 'pagos',      openedAt: new Date(Date.now() - 10 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 10 * 60000).toISOString() },
-    { ticketId: 'TKT-4520', asunto: 'No puede acceder a su cuenta',     estado: 'en_progreso',   prioridad: 'media', canal: 'chat',    sourceProject: 'auth',       openedAt: new Date(Date.now() - 25 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 20 * 60000).toISOString() },
-    { ticketId: 'TKT-4519', asunto: 'Solicitud: exportar a CSV',        estado: 'abierto',       prioridad: 'baja',  canal: 'portal',  sourceProject: 'analytics',  openedAt: new Date(Date.now() - 60 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 60 * 60000).toISOString() },
-    { ticketId: 'TKT-4518', asunto: 'Integración no funciona',          estado: 'cerrado',       prioridad: 'alta',  canal: 'email',   sourceProject: 'inventario', openedAt: new Date(Date.now() - 120 * 60000).toISOString(), updatedAt: new Date(Date.now() - 30 * 60000).toISOString() },
-    { ticketId: 'TKT-4517', asunto: 'Error al generar reporte mensual', estado: 'en_progreso',   prioridad: 'media', canal: 'telefono',sourceProject: 'orders',     openedAt: new Date(Date.now() - 180 * 60000).toISOString(), updatedAt: new Date(Date.now() - 45 * 60000).toISOString() },
+    { ticketId: 'TKT-4521', asunto: 'Problema con pago de suscripción', estado: 'Abierto',  prioridad: 'Alta',    canal: 'Email',    sourceProject: 'pagos',      openedAt: new Date(Date.now() - 10 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 10 * 60000).toISOString() },
+    { ticketId: 'TKT-4520', asunto: 'No puede acceder a su cuenta',     estado: 'Progreso', prioridad: 'Media',   canal: 'Chat',     sourceProject: 'auth',       openedAt: new Date(Date.now() - 25 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 20 * 60000).toISOString() },
+    { ticketId: 'TKT-4519', asunto: 'Solicitud: exportar a CSV',        estado: 'Abierto',  prioridad: 'Baja',    canal: 'App',      sourceProject: 'analytics',  openedAt: new Date(Date.now() - 60 * 60000).toISOString(),  updatedAt: new Date(Date.now() - 60 * 60000).toISOString() },
+    { ticketId: 'TKT-4518', asunto: 'Integración no funciona',          estado: 'Cerrado',  prioridad: 'Alta',    canal: 'Email',    sourceProject: 'inventario', openedAt: new Date(Date.now() - 120 * 60000).toISOString(), updatedAt: new Date(Date.now() - 30 * 60000).toISOString() },
+    { ticketId: 'TKT-4517', asunto: 'Error al generar reporte mensual', estado: 'Progreso', prioridad: 'Crítica', canal: 'Teléfono', sourceProject: 'orders',     openedAt: new Date(Date.now() - 180 * 60000).toISOString(), updatedAt: new Date(Date.now() - 45 * 60000).toISOString() },
   ],
 }
 
@@ -725,6 +726,20 @@ export const crmSLA: CRMSLASummary = {
   totalViolations:    8,
   criticalViolations: 2,
   slaComplianceRate:  94.5,
+}
+
+export const crmTicketLive: CRMExternalTicketResponse = {
+  ticket_id: 'TKT-4521',
+  estado: 'Progreso',
+  prioridad: 'Alta',
+  canal: 'Email',
+  asunto: 'Problema con pago de suscripción',
+  cliente_id: 8823,
+  cliente_nombre: 'María Fernández',
+  pago_id_ref: 'PAY-2026-00981',
+  salud_ref: undefined,
+  resolucion: undefined,
+  suscripcion_id_ref: 'SUB-2026-00312',
 }
 
 // Global KPIs for Overview

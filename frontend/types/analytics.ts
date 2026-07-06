@@ -462,6 +462,22 @@ export interface CRMSLASummary {
   slaComplianceRate: number
 }
 
+// Espejo del TicketDto real del CRM externo (snake_case, no sigue la
+// convención camelCase del resto de la API — es un pass-through directo).
+export interface CRMExternalTicketResponse {
+  ticket_id: string
+  estado: string
+  prioridad?: string
+  canal?: string
+  asunto?: string
+  cliente_id?: number
+  cliente_nombre?: string
+  pago_id_ref?: string
+  salud_ref?: string
+  resolucion?: string
+  suscripcion_id_ref?: string
+}
+
 // ─── Pagos — Dashboard & Auditoría ───────────────────────────────────────────
 
 export interface KpiResumen {
