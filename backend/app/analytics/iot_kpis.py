@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 from app.models import FactIoT, RawEvent
 
 
+def _to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 # ================================================================
 # FUNCIONES DE CÁLCULO DE KPIs BÁSICOS
 # ================================================================
@@ -94,25 +102,74 @@ def get_low_battery_count(db: Session, days: Optional[int] = None, threshold: in
     return query.scalar() or 0
 
 
+def _get_latest_iot_rows(db: Session, days: Optional[int] = None) -> List[Dict[str, any]]:
+    """Obtiene la última fila conocida por sensor, ordenada por recencia."""
+    query = db.query(
+        FactIoT.sensor_id,
+        FactIoT.asset_id,
+        FactIoT.sensor_type,
+        FactIoT.is_online,
+        FactIoT.battery_level,
+        FactIoT.last_data_received_at,
+        FactIoT.location,
+        FactIoT.has_anomaly,
+        FactIoT.low_battery_alert,
+        FactIoT.updated_at,
+        FactIoT.id,
+    )
+
+    if days:
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
+        query = query.filter(FactIoT.updated_at >= cutoff_date)
+
+    rows = query.order_by(
+        FactIoT.sensor_id,
+        FactIoT.updated_at.desc(),
+        FactIoT.id.desc(),
+    ).all()
+
+    latest_by_sensor = {}
+    for (
+        sensor_id,
+        asset_id,
+        sensor_type,
+        is_online,
+        battery_level,
+        last_data_received_at,
+        location,
+        has_anomaly,
+        low_battery_alert,
+        updated_at,
+        row_id,
+    ) in rows:
+        if sensor_id not in latest_by_sensor:
+            latest_by_sensor[sensor_id] = {
+                "sensor_id": sensor_id,
+                "asset_id": asset_id,
+                "sensor_type": sensor_type,
+                "is_online": is_online,
+                "battery_level": battery_level,
+                "last_reading_at": last_data_received_at,
+                "location": location,
+                "has_anomaly": bool(has_anomaly),
+                "low_battery_alert": bool(low_battery_alert),
+                "updated_at": _to_utc(updated_at),
+                "id": row_id,
+            }
+
+    return list(latest_by_sensor.values())
+
+
 def get_data_validity_rate(db: Session, days: Optional[int] = None) -> float:
     """
-    Calcula porcentaje de datos válidos (sin anomalías).
-    Fórmula: COUNT(has_anomaly=FALSE) / COUNT(DISTINCT sensor_id)
+    Calcula porcentaje de datos válidos usando el último estado por sensor.
+    Fórmula: COUNT(último has_anomaly=FALSE) / COUNT(DISTINCT sensor_id)
     
     Rango: 0.0 a 1.0
     """
-    total_query = db.query(func.count(func.distinct(FactIoT.sensor_id)))
-    valid_query = db.query(func.count(func.distinct(FactIoT.sensor_id))).filter(
-        FactIoT.has_anomaly == False
-    )
-    
-    if days:
-        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-        total_query = total_query.filter(FactIoT.updated_at >= cutoff_date)
-        valid_query = valid_query.filter(FactIoT.updated_at >= cutoff_date)
-    
-    total = total_query.scalar() or 0
-    valid = valid_query.scalar() or 0
+    latest_rows = _get_latest_iot_rows(db, days)
+    total = len(latest_rows)
+    valid = sum(1 for row in latest_rows if not row["has_anomaly"])
     
     if total == 0:
         return 0.0
@@ -121,36 +178,35 @@ def get_data_validity_rate(db: Session, days: Optional[int] = None) -> float:
 
 
 def get_anomalies_detected(db: Session, days: Optional[int] = None) -> int:
-    """Obtiene cantidad de sensores con anomalías detectadas."""
-    query = db.query(func.count(func.distinct(FactIoT.sensor_id))).filter(
-        FactIoT.has_anomaly == True
-    )
-    if days:
-        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-        query = query.filter(FactIoT.updated_at >= cutoff_date)
-    
-    return query.scalar() or 0
+    """Obtiene cantidad de sensores con anomalías en su último estado."""
+    latest_rows = _get_latest_iot_rows(db, days)
+    return sum(1 for row in latest_rows if row["has_anomaly"])
 
 
-def get_avg_processing_latency_ms(db: Session, days: Optional[int] = None) -> float:
+def get_avg_processing_latency_seconds(db: Session, days: Optional[int] = None) -> float:
     """
-    Calcula latencia promedio de procesamiento en milisegundos.
-    Basado en diferencia entre created_at y last_data_received_at.
+    Calcula la latencia promedio real en segundos.
+    Usa la diferencia entre last_data_received_at y updated_at.
     """
     query = db.query(
         func.avg(
-            func.extract('epoch', FactIoT.last_data_received_at - FactIoT.created_at) * 1000
+            func.extract('epoch', FactIoT.updated_at - FactIoT.last_data_received_at)
         )
     ).filter(
         FactIoT.last_data_received_at.isnot(None)
     )
-    
+
     if days:
         cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-        query = query.filter(FactIoT.updated_at >= cutoff_date)
-    
+        query = query.filter(FactIoT.last_data_received_at >= cutoff_date)
+
     result = query.scalar()
-    return round(result, 1) if result else 0.0
+    return round(result, 3) if result else 0.0
+
+
+def get_avg_processing_latency_ms(db: Session, days: Optional[int] = None) -> float:
+    """Compatibilidad: devuelve la misma latencia expresada en milisegundos."""
+    return round(get_avg_processing_latency_seconds(db, days) * 1000, 1)
 
 
 # ================================================================
@@ -166,7 +222,7 @@ def get_all_iot_kpis(db: Session, days: Optional[int] = None) -> Dict[str, any]:
     - avg_battery_level, low_battery_count
     
     KPIs con filtro de días (usan parámetro days):
-    - data_validity_rate, anomalies_detected, avg_processing_latency_ms
+    - data_validity_rate, anomalies_detected, avg_processing_latency_seconds
     """
     
     # Real-time siempre (sin filtro de días)
@@ -180,6 +236,7 @@ def get_all_iot_kpis(db: Session, days: Optional[int] = None) -> Dict[str, any]:
     # Con filtro de días (usan el parámetro days si se proporciona)
     data_validity_rate = get_data_validity_rate(db, days)
     anomalies_detected = get_anomalies_detected(db, days)
+    avg_processing_latency_seconds = get_avg_processing_latency_seconds(db, days)
     avg_processing_latency_ms = get_avg_processing_latency_ms(db, days)
     
     return {
@@ -191,6 +248,7 @@ def get_all_iot_kpis(db: Session, days: Optional[int] = None) -> Dict[str, any]:
         "low_battery_count": low_battery_count,
         "data_validity_rate": data_validity_rate,
         "anomalies_detected": anomalies_detected,
+        "avg_processing_latency_seconds": avg_processing_latency_seconds,
         "avg_processing_latency_ms": avg_processing_latency_ms,
     }
 
@@ -204,66 +262,93 @@ def get_sensors_status(
     days: Optional[int] = None,
     limit: int = 100,
     offset: int = 0,
-) -> List[Dict[str, any]]:
-    """Obtiene estado actual de todos los sensores."""
-    query = db.query(
-        FactIoT.sensor_id,
-        FactIoT.asset_id,
-        FactIoT.sensor_type,
-        FactIoT.is_online,
-        FactIoT.battery_level,
-        FactIoT.last_data_received_at,
-        FactIoT.location,
-        FactIoT.has_anomaly,
-        FactIoT.low_battery_alert,
-    ).distinct(FactIoT.sensor_id)
+    status: str = "all",
+    search: Optional[str] = None,
+) -> Dict[str, any]:
+    """Obtiene el último estado por sensor con paginación y filtro de estado."""
+    latest_rows = _get_latest_iot_rows(db, days)
 
-    if days:
-        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-        query = query.filter(FactIoT.updated_at >= cutoff_date)
+    if search:
+        search_term = search.strip().lower()
+        if search_term:
+            latest_rows = [
+                row
+                for row in latest_rows
+                if search_term in (row["sensor_id"] or "").lower()
+                or search_term in (row["asset_id"] or "").lower()
+                or search_term in (row["sensor_type"] or "").lower()
+            ]
 
-    query = query.order_by(FactIoT.sensor_id, FactIoT.updated_at.desc())
+    if status == "active":
+        latest_rows = [row for row in latest_rows if row["is_online"]]
+    elif status == "inactive":
+        latest_rows = [row for row in latest_rows if not row["is_online"]]
 
-    results = query.offset(offset).limit(limit).all()
+    results = latest_rows[offset: offset + limit]
+    online_count = sum(1 for row in latest_rows if row["is_online"])
+    offline_count = len(latest_rows) - online_count
     
-    return [
-        {
-            "sensor_id": row[0],
-            "asset_id": row[1],
-            "sensor_type": row[2],
-            "is_online": row[3],
-            "battery_level": row[4],
-            "last_reading_at": row[5],
-            "location": row[6],
-            "has_anomaly": row[7],
-            "low_battery_alert": row[8],
-        }
-        for row in results
-    ]
+    return {
+        "total_sensors": len(latest_rows),
+        "online_count": online_count,
+        "offline_count": offline_count,
+        "sensors": [
+            {
+                "sensor_id": row["sensor_id"],
+                "asset_id": row["asset_id"],
+                "sensor_type": row["sensor_type"],
+                "is_online": row["is_online"],
+                "battery_level": row["battery_level"],
+                "last_reading_at": _to_utc(row["last_reading_at"]),
+                "location": row["location"],
+                "has_anomaly": row["has_anomaly"],
+                "low_battery_alert": row["low_battery_alert"],
+            }
+            for row in results
+        ],
+    }
 
 
 def get_sensors_by_type(db: Session, days: Optional[int] = None) -> List[Dict[str, any]]:
-    """Obtiene distribución y estado de sensores por tipo."""
-    query = db.query(
-        FactIoT.sensor_type,
-        func.count(func.distinct(FactIoT.sensor_id)).label("count"),
-        func.sum(func.cast(FactIoT.is_online, Integer)).label("online_count"),
-        func.count(func.distinct(
-            case((FactIoT.is_online == False, FactIoT.sensor_id), else_=None)
-        )).label("offline_count"),
-        func.avg(FactIoT.battery_level).label("avg_battery"),
-        func.count(func.distinct(
-            case((FactIoT.has_anomaly == True, FactIoT.sensor_id), else_=None)
-        )).label("anomaly_count"),
-    ).filter(FactIoT.sensor_type.isnot(None))
-    
-    if days:
-        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
-        query = query.filter(FactIoT.updated_at >= cutoff_date)
-    
-    query = query.group_by(FactIoT.sensor_type)
-    
-    results = query.all()
+    """Obtiene distribución y estado de sensores por tipo usando el último estado por sensor."""
+    latest_rows = _get_latest_iot_rows(db, days)
+    grouped = {}
+
+    for row in latest_rows:
+        sensor_type = row["sensor_type"]
+        if not sensor_type:
+            continue
+
+        bucket = grouped.setdefault(
+            sensor_type,
+            {
+                "count": 0,
+                "online_count": 0,
+                "offline_count": 0,
+                "battery_total": 0.0,
+                "battery_count": 0,
+                "anomaly_count": 0,
+            },
+        )
+        bucket["count"] += 1
+        bucket["online_count"] += 1 if row["is_online"] else 0
+        bucket["offline_count"] += 0 if row["is_online"] else 1
+        if row["battery_level"] is not None:
+            bucket["battery_total"] += float(row["battery_level"])
+            bucket["battery_count"] += 1
+        bucket["anomaly_count"] += 1 if row["has_anomaly"] else 0
+
+    results = [
+        (
+            sensor_type,
+            bucket["count"],
+            bucket["online_count"],
+            bucket["offline_count"],
+            (bucket["battery_total"] / bucket["battery_count"]) if bucket["battery_count"] else 0.0,
+            bucket["anomaly_count"],
+        )
+        for sensor_type, bucket in grouped.items()
+    ]
     
     return [
         {
@@ -301,7 +386,7 @@ def get_iot_events(db: Session, days: Optional[int] = None, limit: int = 100) ->
             "event_id": row[0],
             "sensor_id": row[4].get("sensor_id") if row[4] else None,
             "event_type": row[2],
-            "timestamp": row[3],
+            "timestamp": _to_utc(row[3]),
             "severity": "critical" if row[2] in ["sensor_offline", "low_battery"] else "warning" if row[2] in ["out_of_range", "signal_lost"] else "info",
             "message": f"Evento: {row[2]}",
             "data": row[4],

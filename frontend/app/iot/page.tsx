@@ -11,6 +11,7 @@ import {
   SeverityBadge,
 } from "@/components/dashboard/status-badge";
 import { useIoTKPIs, useIoTDevices } from "@/hooks/use-analytics";
+import { useIoTSensorsByType } from "@/hooks/use-analytics";
 import {
   Cpu,
   Activity,
@@ -42,7 +43,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { IoTDevice, IoTAlert } from "@/types/analytics";
+import type { IoTAlert } from "@/types/analytics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,12 +52,40 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
 import { RoleGate } from "@/components/auth/role-gate";
 type AllowedDays = 1 | 7 | 30 | 90 | 180 | 365;
+type SensorStatusFilter = "all" | "active" | "inactive";
+
+const sensorTypeTranslations: Record<string, string> = {
+  glucometer: "Glucómetro",
+  thermometer: "Termómetro",
+  pulse_oximeter: "Oxímetro de pulso",
+  sphygmomanometer: "Esfigmomanómetro",
+};
+
+const translateSensorType = (type: string): string => {
+  if (!type) return "";
+  return sensorTypeTranslations[type.toLowerCase()] || type;
+};
+
+const mapSearchQueryToEnglish = (query: string): string => {
+  const q = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove accents
+  if (q.includes("glucometro")) return "glucometer";
+  if (q.includes("termometro")) return "thermometer";
+  if (q.includes("oximetro")) return "pulse_oximeter";
+  if (q.includes("esfigmomanometro") || q.includes("tensiometro")) return "sphygmomanometer";
+  return query;
+};
 
 function IotContent() {
   const [selectedDays, setSelectedDays] = useState<AllowedDays>(30);
+  const [selectedStatus, setSelectedStatus] = useState<SensorStatusFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const pageSize = 10;
 
   const filterDaysLabel: Record<AllowedDays, string> = {
     1: "Último día",
@@ -67,16 +96,40 @@ function IotContent() {
     365: "Últimos 365 días",
   };
 
-  const { data: kpis, isLoading: kpisLoading } = useIoTKPIs(selectedDays);
-  const { data: devices, isLoading: devicesLoading } = useIoTDevices(selectedDays);
+  const statusLabel: Record<SensorStatusFilter, string> = {
+    all: "Todos",
+    active: "Activos",
+    inactive: "Inactivos",
+  };
 
-  const getStatusColor = (status: string) => {
+  const { data: kpis, isLoading: kpisLoading } = useIoTKPIs(selectedDays);
+  const { data: devices, isLoading: devicesLoading } = useIoTDevices(
+    selectedDays,
+    selectedStatus,
+    searchQuery,
+    pageSize,
+    (currentPage - 1) * pageSize,
+  );
+  const { data: sensorsByType, isLoading: typesLoading } = useIoTSensorsByType(selectedDays);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDays, selectedStatus, searchQuery]);
+
+  const applySearch = () => {
+    setCurrentPage(1);
+    const mappedQuery = mapSearchQueryToEnglish(searchInput.trim());
+    setSearchQuery(mappedQuery);
+  };
+
+  const getStatusColor = (status: string | boolean) => {
+    if (typeof status === "boolean") {
+      return status ? "text-success" : "text-destructive";
+    }
     switch (status) {
       case "online":
-      case true:
         return "text-success";
       case "offline":
-      case false:
         return "text-destructive";
       case "warning":
         return "text-warning";
@@ -93,18 +146,32 @@ function IotContent() {
 
   // Preparar datos para gráfico de sensores por tipo
   const sensorsList = devices?.sensors || [];
-  const sensorsByTypeChartData =
-    sensorsList.length > 0
-      ? Object.entries(
-          sensorsList.reduce(
-            (acc, device) => {
-              acc[device.sensor_type] = (acc[device.sensor_type] || 0) + 1;
-              return acc;
-            },
-            {} as Record<string, number>,
-          ),
-        ).map(([name, count]) => ({ name, count }))
-      : [];
+  const sensorsByTypeChartData = (sensorsByType?.sensor_types ?? []).map((item) => ({
+    ...item,
+    sensor_type: translateSensorType(item.sensor_type),
+  }));
+  const totalSensors = devices?.total_sensors ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalSensors / pageSize));
+  const canGoPrevious = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
+  const hasSensors = sensorsList.length > 0;
+
+  const SensorTypeTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+
+    const item = payload[0].payload;
+
+    return (
+      <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-md">
+        <p className="text-sm font-medium text-foreground">
+          {item.sensor_type}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Cantidad: {item.count}
+        </p>
+      </div>
+    );
+  };
 
   return (
       <div className="space-y-6">
@@ -219,7 +286,7 @@ function IotContent() {
               ) : kpis ? (
                 <>
                   <KPICard
-                    title="Tasa de Validez de Datos"
+                    title="Tasa de Sensores sin Anomalías"
                     value={`${((kpis.data_validity_rate ?? 0) * 100).toFixed(1)}%`}
                     icon={<Activity className="h-5 w-5" />}
                   />
@@ -230,7 +297,7 @@ function IotContent() {
                   />
                   <KPICard
                     title="Latencia Promedio"
-                    value={`${kpis.avg_processing_latency_ms?.toFixed(0) ?? 0}ms`}
+                    value={`${kpis.avg_processing_latency_seconds?.toFixed(3) ?? 0}s`}
                     icon={<Clock className="h-5 w-5" />}
                   />
                 </>
@@ -240,31 +307,24 @@ function IotContent() {
         </Card>
 
         {/* Sensores por Tipo */}
-        {devicesLoading ? (
+        {typesLoading ? (
           <ChartCardSkeleton />
         ) : sensorsByTypeChartData.length > 0 ? (
           <ChartCard
             title="Distribución por Tipo de Sensor"
             description="Cantidad de sensores agrupados por tipo"
           >
-            <div className="h-[280px]">
+            <div className="h-70">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sensorsByTypeChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis
-                    dataKey="name"
+                    dataKey="sensor_type"
                     stroke="var(--muted-foreground)"
                     fontSize={12}
                   />
                   <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--popover)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "var(--foreground)" }}
-                  />
+                  <Tooltip content={<SensorTypeTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
                   <Bar dataKey="count" fill="var(--chart-1)" name="Cantidad" />
                 </BarChart>
               </ResponsiveContainer>
@@ -275,55 +335,158 @@ function IotContent() {
         {/* Estado de Sensores */}
         {devicesLoading ? (
           <ChartCardSkeleton />
-        ) : sensorsList.length > 0 ? (
+        ) : (
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-primary" />
-                Estado de Sensores ({sensorsList.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-              {sensorsList.slice(0, 10).map((device: any) => (
-                <div
-                  key={device.sensor_id}
-                  className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg bg-muted ${getStatusColor(device.is_online)}`}
-                    >
-                      <Signal className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-medium text-foreground text-sm truncate">
-                        {device.sensor_id}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {device.sensor_type}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {device.battery_level !== null && (
-                      <div
-                        className={`flex items-center gap-1 ${getBatteryColor(device.battery_level)}`}
-                      >
-                        <Battery className="h-3 w-3" />
-                        <span className="text-xs font-medium">
-                          {device.battery_level?.toFixed(0)}%
-                        </span>
-                      </div>
-                    )}
-                    <StatusBadge
-                      status={device.is_online ? "online" : "offline"}
+            <CardHeader className="space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-primary" />
+                  Estado de Sensores ({totalSensors})
+                </CardTitle>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
+                  <div className="w-full md:w-72">
+                    <Input
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          applySearch();
+                        }
+                      }}
+                      placeholder="Buscar por sensor, activo o tipo"
+                      className="bg-background"
                     />
                   </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="whitespace-nowrap"
+                    onClick={applySearch}
+                  >
+                    Buscar
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 bg-background border-border text-foreground hover:bg-muted whitespace-nowrap"
+                      >
+                        <span>Estado: {statusLabel[selectedStatus]}</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onClick={() => setSelectedStatus("all")}>Todos</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedStatus("active")}>Activos</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedStatus("inactive")}>Inactivos</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              ))}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3 max-h-125 overflow-y-auto">
+                {hasSensors ? (
+                  sensorsList.map((device) => (
+                    <div
+                      key={device.sensor_id}
+                      className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg bg-muted ${getStatusColor(device.is_online)}`}
+                        >
+                          <Signal className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground text-sm truncate">
+                            {device.sensor_id}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {translateSensorType(device.sensor_type)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {device.battery_level !== null && (
+                          <div
+                            className={`flex items-center gap-1 ${getBatteryColor(device.battery_level ?? 0)}`}
+                          >
+                            <Battery className="h-3 w-3" />
+                            <span className="text-xs font-medium">
+                              {device.battery_level?.toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
+                        <StatusBadge
+                          status={device.is_online ? "online" : "offline"}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-foreground">
+                      No hay sensores que coincidan con la búsqueda
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Prueba con otro texto, cambia el estado o limpia el filtro.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 bg-background border-border text-foreground hover:bg-muted whitespace-nowrap"
+                      >
+                        <span>Ir a página</span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto w-40">
+                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                        <DropdownMenuItem
+                          key={pageNumber}
+                          onClick={() => setCurrentPage(pageNumber)}
+                          className={pageNumber === currentPage ? "font-medium" : ""}
+                        >
+                          Página {pageNumber}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canGoPrevious}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canGoNext}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ) : null}
+        )}
       </div>
   );
 }
