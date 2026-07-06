@@ -73,6 +73,10 @@ def get_ticket_estado(ticket_id: str) -> dict[str, Any]:
         ticket = data.get("ticket")
         if ticket is None:
             raise CRMExternalError("Respuesta 'ok' del CRM externo sin campo 'ticket'")
+        # El TicketDto real usa "id", no "ticket_id" (confirmado jul-2026 con el
+        # equipo del CRM externo) — normalizamos al nombre que espera nuestro schema.
+        if "ticket_id" not in ticket and "id" in ticket:
+            ticket = {**ticket, "ticket_id": ticket["id"]}
         return ticket
 
     message = str(data.get("message", "")).lower()

@@ -69,11 +69,17 @@ class CRMExternalTicketResponse(BaseModel):
     prioridad: Optional[str] = None
     canal: Optional[str] = None
     asunto: Optional[str] = None
+    descripcion: Optional[str] = None
     cliente_id: Optional[int] = None
     cliente_nombre: Optional[str] = None
+    agente_id: Optional[str] = None
+    fecha_vencimiento_sla: Optional[str] = None
+    pedido_id_ref: Optional[str] = None
     pago_id_ref: Optional[str] = None
     salud_ref: Optional[str] = None
     resolucion: Optional[str] = None
     # Nombre real del campo en el CRM externo — distinto de nuestro
     # `suscripcion_id_red` interno (typo histórico ya documentado en tests).
     suscripcion_id_ref: Optional[str] = None
+    creado_en: Optional[str] = None
+    actualizado_en: Optional[str] = None
