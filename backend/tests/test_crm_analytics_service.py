@@ -228,6 +228,7 @@ class TestGetSlaSummary:
         assert "totalViolations" in result
         assert "criticalViolations" in result
         assert "slaComplianceRate" in result
+        assert "ticketsEvaluated" in result
 
     def test_sla_compliance_is_percentage(self):
         from app.services.crm_analytics_service import get_sla_summary
@@ -243,13 +244,14 @@ class TestGetSlaSummary:
         assert isinstance(result["totalViolations"], int)
         assert isinstance(result["criticalViolations"], int)
 
-    def test_no_tickets_evaluated_default_to_one(self):
-        """Cuando tickets_evaluated=0 se usa `or 1` para evitar ZeroDivisionError."""
+    def test_no_tickets_evaluated_reports_zero(self):
+        """Sin tickets evaluables: no lanza ZeroDivisionError, compliance 0.0 y
+        ticketsEvaluated=0 (el frontend usa eso para mostrar 'Sin datos')."""
         from app.services.crm_analytics_service import get_sla_summary
         db = _make_db_scalar(0)
         result = get_sla_summary(db)
-        # No debe lanzar ZeroDivisionError
         assert result["slaComplianceRate"] == 0.0
+        assert result["ticketsEvaluated"] == 0
 
 
 # ─── get_tickets_by_channel ────────────────────────────────────────────────────

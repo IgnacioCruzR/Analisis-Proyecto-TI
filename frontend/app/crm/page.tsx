@@ -569,19 +569,32 @@ export default function CRMPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-foreground">
-                    {sla?.slaComplianceRate?.toFixed(1) ?? 0}%
+                {(sla?.ticketsEvaluated ?? 0) === 0 ? (
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-muted-foreground">Sin datos</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Aún no hay tickets resueltos con dato de SLA para evaluar
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">Tasa de cumplimiento</div>
-                </div>
+                ) : (
+                  <>
+                    <div className="text-center">
+                      <div className="text-4xl font-bold text-foreground">
+                        {sla?.slaComplianceRate?.toFixed(1) ?? 0}%
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Tasa de cumplimiento · {sla?.ticketsEvaluated} tickets evaluados
+                      </div>
+                    </div>
 
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-chart-1 transition-all"
-                    style={{ width: `${sla?.slaComplianceRate ?? 0}%` }}
-                  />
-                </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-chart-1 transition-all"
+                        style={{ width: `${sla?.slaComplianceRate ?? 0}%` }}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3">

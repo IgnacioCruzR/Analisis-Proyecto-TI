@@ -122,9 +122,12 @@ def get_crm_timeline(db: Session, days: int = 14) -> List[Dict[str, Any]]:
 
 
 def get_recent_tickets(db: Session, limit: int = 10) -> List[Dict[str, Any]]:
+    # Ordena por última actividad (updated_at) con fallback a opened_at, así los
+    # tickets que cambian de estado suben y se refleja el movimiento — no solo
+    # los recién creados.
     tickets = (
         db.query(FactTicket)
-        .order_by(FactTicket.opened_at.desc())
+        .order_by(func.coalesce(FactTicket.updated_at, FactTicket.opened_at).desc())
         .limit(limit)
         .all()
     )
@@ -202,14 +205,21 @@ def get_sla_summary(db: Session) -> Dict[str, Any]:
     tickets_evaluated = (
         db.query(func.count(FactTicket.id))
         .filter(FactTicket.within_sla.isnot(None))
-        .scalar() or 1
+        .scalar() or 0
     )
-    sla_compliance = round((tickets_within_sla / tickets_evaluated) * 100, 1)
+    # Sin tickets evaluables no hay una tasa real de cumplimiento — se devuelve
+    # 0.0 pero el frontend usa ticketsEvaluated para mostrar "Sin datos" en vez
+    # de un 0.0% engañoso (que parece incumplimiento total cuando en realidad
+    # todavía no se ha resuelto ningún ticket con dato de SLA).
+    sla_compliance = (
+        round((tickets_within_sla / tickets_evaluated) * 100, 1) if tickets_evaluated else 0.0
+    )
 
     return {
         "totalViolations": total_violations,
         "criticalViolations": critical_violations,
         "slaComplianceRate": sla_compliance,
+        "ticketsEvaluated": tickets_evaluated,
     }
 
 
