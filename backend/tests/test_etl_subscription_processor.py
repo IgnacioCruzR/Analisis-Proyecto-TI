@@ -86,7 +86,7 @@ class TestSubscriptionETL:
         assert fact is not None
         assert fact.user_id is None
 
-    def test_subscription_created_missing_plan_id_raises(self):
+    def test_subscription_created_missing_plan_id_is_ok(self):
         db = _make_db(None)
         raw = _make_raw(
             "subscription_created",
@@ -96,8 +96,10 @@ class TestSubscriptionETL:
                 "status": "ACTIVE"
             }
         )
-        with pytest.raises(PayloadValidationError):
-            process_subscription_event(db, raw)
+        fact = process_subscription_event(db, raw)
+        assert fact is not None
+        assert fact.plan_id is None
+
 
     def test_subscription_cancelled_updates_existing(self):
         existing = FactSubscription(

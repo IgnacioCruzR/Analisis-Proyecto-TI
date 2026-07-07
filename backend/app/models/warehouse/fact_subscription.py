@@ -13,7 +13,8 @@ class FactSubscription(Base):
     contract_id = Column(String(50), nullable=False, index=True, unique=True)
     user_id = Column(String(50), nullable=True)
 
-    plan_id = Column(Integer, nullable=False)
+    plan_id = Column(Integer, nullable=True)
+
     
     # Dimension Attributes
     status = Column(String(20), nullable=False)

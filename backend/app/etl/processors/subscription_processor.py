@@ -49,8 +49,7 @@ def process_subscription_event(db: Session, raw_event: RawEvent) -> Optional[Fac
         else:
             user_id = payload.get("user_id")
             plan_id = payload.get("plan_id")
-            if plan_id is None:
-                raise PayloadValidationError("Campo requerido faltante: plan_id")
+
 
             start_date = payload.get("start_date")
             if start_date and isinstance(start_date, str):
