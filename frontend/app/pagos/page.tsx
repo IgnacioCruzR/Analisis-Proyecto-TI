@@ -554,8 +554,12 @@ export default function PaymentsPage() {
               </ChartCard>
             )}
 
-            {/* Incidentes SLA — downtime vs degradación (área apilada) */}
-            {slaLoading ? (
+            {/* Incidentes SLA — downtime vs degradación (área apilada).
+                Oculto (jul-2026): el equipo de pagos envía muy pocos eventos de
+                downtime/degradación, así que el gráfico queda vacío y no aporta
+                en la presentación. Se deja el código (guard `false &&`) para
+                reactivarlo fácil si empiezan a llegar eventos. */}
+            {false && (slaLoading ? (
               <ChartCardSkeleton />
             ) : (
               <ChartCard
@@ -619,7 +623,7 @@ export default function PaymentsPage() {
                   </p>
                 )}
               </ChartCard>
-            )}
+            ))}
           </TabsContent>
 
           {/* ── Tab: Auditoría ───────────────────────────────────────────── */}
