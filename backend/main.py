@@ -3,12 +3,6 @@ import logging
 import os
 import uuid as _uuid
 from contextlib import asynccontextmanager
-from dotenv import find_dotenv, load_dotenv
-
-# Cargar variables de entorno temprano, antes de importar módulos que las necesitan
-_env_file = find_dotenv(".env.local", usecwd=True) or find_dotenv(usecwd=True)
-if _env_file:
-    load_dotenv(_env_file)
 
 logger = logging.getLogger(__name__)
 
