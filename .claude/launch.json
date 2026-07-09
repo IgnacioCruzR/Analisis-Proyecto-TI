@@ -4,9 +4,8 @@
     {
       "name": "backend",
       "runtimeExecutable": "backend/.venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "uvicorn", "main:app", "--reload", "--app-dir", "backend"],
-      "port": 8000,
-      "autoPort": true
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--reload", "--port", "8000", "--app-dir", "backend"],
+      "port": 8000
     },
     {
       "name": "frontend",
